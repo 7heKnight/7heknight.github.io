@@ -6,6 +6,8 @@ window.onload = function load_title() {
         document.getElementById("title").innerText="Category";
     else if (path === "index.html")
         document.getElementById("title").innerText="Home Page";
+    else if (path === "copyright.html")
+        document.getElementById("title").innerText="Copyright Page";
     else
         document.getElementById("title").innerText="Reading blog";
 }

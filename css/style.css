@@ -146,8 +146,8 @@ footer {
 }
 
 footer p {
-    font-size: x-large;
     margin-bottom: 10px;
+    margin-top: 10px;
 }
 
 footer img {
@@ -155,4 +155,5 @@ footer img {
     height: 25px;
     padding-left: 3px;
     padding-right: 3px;
+    margin-top: 10px;
 }
