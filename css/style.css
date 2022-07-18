@@ -1,0 +1,158 @@
+* {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+html {
+    background-color: #242424;
+    width: 100%;
+    height: 100%;
+    color: #ffcc00;
+}
+
+a {
+    text-decoration: none;
+    color: #ffcc00;
+}
+
+time {
+    font-style: italic;
+    color: #696969;
+}
+
+/*HEADER PART*/
+header {
+    display: inline-block;
+    width: 100%;
+    height: auto;
+    border-bottom: 4px solid #434343;
+    background-color: #353535;
+}
+
+.header_list a {
+    float: left;
+    text-align: center;
+    text-decoration: none;
+    padding: 1% 2.5%;
+    color: #ffcc00;
+    font-weight: bolder;
+}
+
+.header_list a:hover {
+    background-color: #181818;
+}
+
+.header_list a#active_page {
+    background-color: #ffcc00;
+    color: black;
+}
+
+header p {
+    display: inline-block;
+    width: 60%;
+    padding: 1% 0;
+    text-align: center;
+    font-weight: bolder;
+}
+
+/*MAIN PART*/
+main {
+    display: inline-block;
+    float: left;
+    height: auto;
+    width: 100%;
+    padding-top: 2%;
+    color: #f0e7d5;
+    background-color: #242424;
+    padding-bottom: 20px;
+}
+
+/*MAIN PANEL*/
+.main_page_panel {
+    margin: 0 25%;
+}
+
+.main_page_panel article {
+    float: left;
+    display: inline-block;
+    width: 100%;
+    margin-bottom: 20px;
+    border-bottom: 4px dotted #434343;
+}
+
+.index_post {
+    display: block;
+}
+
+.index_post img {
+    width: 140px;
+    height: 140px;
+    object-fit: cover;
+    float: left;
+    display: block;
+    padding-right: 10%;
+    padding-bottom: 30px;
+}
+
+.index_post_text p {
+    word-wrap: break-word;
+    white-space: -moz-pre-wrap;
+    white-space: pre-wrap;
+    padding-bottom: 30px;
+}
+
+.index_post_text time {
+    display: block;
+    width: revert;
+    float: left;
+}
+
+
+/*================= USED FOR POST ONLY =================*/
+/*LEFT PANEL*/
+.left_panel {
+    display: block;
+    float: left;
+    width: 23%;
+}
+
+/*CENTER PANEL*/
+.center_panel {
+    display: block;
+    width: 50%;
+}
+
+.center_panel #post_title {
+    text-align: center;
+}
+
+/*RIGHT PANEL*/
+.right_panel {
+    display: block;
+    float: right;
+    width: 23%;
+    margin-left: 2%;
+}
+
+footer {
+    width: 100%;
+    height: auto;
+    display: block;
+    text-align: center;
+    background-color: #353535;
+    padding-top: 30px;
+    padding-bottom: 20px;
+    border-top: 4px solid #434343;
+}
+
+footer p {
+    font-size: x-large;
+    margin-bottom: 10px;
+}
+
+footer img {
+    width: 25px;
+    height: 25px;
+    padding-left: 3px;
+    padding-right: 3px;
+}
