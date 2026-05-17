@@ -6,8 +6,6 @@ node_modules/
 # Playwright demo tooling (not part of site)
 .playwright-demo.mjs
 .playwright-shots/
-package-lock.json
 
 # OS
 .DS_Store
-package.json
