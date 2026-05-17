@@ -1,175 +1,412 @@
 ---
-title: "OSINT Recon & Enumeration: A Full Footprinting Pass Against certifiedhacker.com"
+title: "OSINT Recon & Enumeration: Research-Grade Footprinting Against certifiedhacker.com"
 date: 2022-09-22
 category: "recon-enum"
 difficulty: "intermediate"
-tags: [OSINT, recon, footprinting, nmap, whois, crt.sh, shodan, wayback, exiftool, google-dorking, HUMINT]
-excerpt: "A researcher-grade reconnaissance methodology applied end-to-end against a deliberately vulnerable training host: HUMINT harvesting from people-facing pages, WHOIS, certificate-transparency subdomain enumeration with a custom validator, passive intelligence from Shodan and the Wayback Machine, full Nmap service and vulnerability scanning, and document/image metadata extraction — with the analytic reasoning that ties each finding to the next kill-chain phase."
+tags: [OSINT, recon, enumeration, footprinting, nmap, whois, crt.sh, shodan, wayback, exiftool, google-dorking, HUMINT, red-team]
+excerpt: "A complete researcher-style reconnaissance case study against EC-Council's training host: passive intelligence collection, HUMINT extraction, WHOIS, certificate transparency, Google dorking, Shodan analysis, Wayback recovery, Nmap validation, metadata harvesting, risk synthesis, and defensive recommendations."
 draft: false
 ---
 
-# OSINT Recon & Enumeration: A Full Footprinting Pass Against certifiedhacker.com
+# OSINT Recon & Enumeration: Research-Grade Footprinting Against certifiedhacker.com
 
-> Educational material only. Every technique below was performed against
-> `certifiedhacker.com`, a host published by EC-Council expressly for
-> security training. Do not run any of this against systems you are not
-> explicitly authorized to test.
+> Educational material only. The work below was performed against
+> `certifiedhacker.com`, a host published by EC-Council for security training.
+> Do not run scanning, enumeration, credential attacks, or social-engineering
+> activity against systems you are not explicitly authorized to test.
 
-## Why reconnaissance is the whole game
+## Executive Summary
 
-Reconnaissance is the first phase of the cyber kill chain, and it is the
-phase that disproportionately determines the cost of every phase after it.
-An attacker who skips it is reduced to noisy, opportunistic scanning; an
-attacker who does it well walks into the engagement already knowing the
-people, the technology stack, the exposed services, and the small data
-leaks that stitch them together.
+This research documents a full reconnaissance and enumeration pass against
+`certifiedhacker.com`. The objective was not simply to collect open ports or
+copy tool output. The objective was to work like a security researcher during
+the first stage of a red-team engagement: identify people, assets, technologies,
+exposed services, archived material, metadata leakage, and weak cryptographic
+configuration, then convert those observations into an attack-path hypothesis
+and defensive guidance.
 
-This writeup is a complete footprinting pass against a single lab host. The
-goal is not to list tools — it is to show the *reasoning*: what each source
-yields, why it matters, and how each finding feeds the next. The work is
-deliberately structured **passive-first** (no packets to the target) and
-only then **active**, because in a real engagement the order matters for
-both stealth and legal scope.
+The target exposed enough information to build a meaningful external profile
+without authentication. Passive sources revealed organization names, people,
+roles, phone numbers, email addresses, reused social handles, archived
+documents, subdomains, hosting information, and Shodan banner history. Active
+validation confirmed a broad internet-facing service surface, including a full
+mail stack, FTP, SSH, DNS, web, database ports, and a validated weak
+Diffie-Hellman configuration on mail-related TLS services.
 
-The methodology, mapped to MITRE ATT&CK's *Reconnaissance* tactic (TA0043):
+The most important finding is not one isolated port or one leaked document.
+The important finding is the way the data connects:
 
-1. **Footprinting people and assets** — Gather Victim Identity Information
-   (T1589), Gather Victim Org Information (T1591).
-2. **Infrastructure intelligence** — WHOIS (T1590.001), DNS / certificate
-   transparency (T1590.002 / Search Open Technical Databases T1596.003).
-3. **Passive technical databases** — Shodan, Wayback (T1596 / T1593).
-4. **Active scanning** — port and vulnerability scanning (T1595.001 /
-   T1595.002).
-5. **Metadata harvesting** — file and image metadata (T1597 / leaked
-   internal fields).
+- HUMINT identifies staff names, roles, emails, phone numbers, and reused
+  handles.
+- Certificate Transparency expands one domain into a targetable infrastructure
+  list.
+- Shodan provides passive service and hosting intelligence.
+- Wayback exposes documents that may no longer be visible through normal
+  navigation.
+- Nmap validates real exposed services and confirms weak TLS parameters.
+- ExifTool turns public files into operational context: software, timestamps,
+  and platform hints.
 
-## 1. Baseline footprint
+That is what makes reconnaissance valuable. It transforms scattered public
+facts into a prioritized map for later kill-chain phases.
 
-Before any tooling, establish the anchor facts. Everything else hangs off
-these:
+## Research Scope
 
-- **Hostname:** `certifiedhacker.com`
-- **Hosting provider:** BLUEHOST
-- **IP:** `162.241.216.11`
-
-These three values alone already branch the investigation: the hostname
-drives certificate-transparency and DNS work, the IP drives Shodan and
-reverse lookups, and the provider tells us this is shared hosting (which
-shapes expectations about what we can and cannot attribute to the target).
-
-## 2. HUMINT — harvesting the people-facing surface
-
-The single highest-value, lowest-noise activity in early recon is reading
-the target's own website like an intelligence analyst, not a user. Each
-mini-application on `certifiedhacker.com` leaks human intelligence that
-feeds phishing, password attacks, and social-engineering pretexts.
-
-### 2.1 P-folio (`/P-folio/index.html`)
-
-A corporate portfolio page — the richest HUMINT source on the site.
-
-- **Organization:** Systematic Software Limited
-- **Address:** 2512 Old Road – Alian Street Alioha – Arizuwa
-- **ZIP:** `01234-567`
-- **Phone:** `+90 123 45 67`
-- **Email:** `aalia@alisan.com`
-- **Named staff with roles** — the part that matters most for an attacker:
-  - **Samuel Andrews** — *Network Administrator* (deploys/configures
-    network hardware and software → privileged infrastructure access).
-  - **Jonathon T.** — *Human Resource (HR)* (broad internal contact;
-    classic phishing entry point).
-  - **Margerete Peterson** — *Manager (HRM)* (authority figure; useful for
-    business-email-compromise pretexts).
-
-Names + roles + an email format (`first@domain`) is enough to *predict*
-other internal addresses and to craft a role-targeted pretext. This is the
-raw material the rest of the kill chain consumes.
-
-### 2.2 Under Construction (`/Under Construction/index.html`)
-
-The most useful kind of leak: a single identity reused across platforms.
-
-- Facebook: `http://www.facebook.com/san.terpstra`
-- Flickr: `http://flickr.com/photos/sanneterpstra`
-- Twitter: `http://twitter.com/sanneterpstra`
-- Skype: `skype:sanneterpstra?call`
-- Linked document: `/docs/NIST.SP.800-63-3.pdf`
-
-`san.terpstra` / `sanneterpstra` is the same handle across four services —
-a username pivot that turns a flat site into a person you can profile,
-correlate, and target.
-
-### 2.3 Remaining mini-apps
-
-Each additional page contributes more contactable surface:
-
-- **Social Media** (`/Social Media/index.html`) — `contact@unite-magazine-community.com`,
-  phone `(888) 564.2891`, address *1658 Street Ln., City, ST 6523*,
-  customer service `1-800-123-986563`.
-- **Corporate-learning-website** — *45 Cornscrew Drive Washington, DC, 20500*,
-  phones `202-483-1111` / `896-563-2323` / `156-542-9532`, fax
-  `202-483-1111`, emails `info@introspire.web`, `sales@introspire.web`,
-  `support@introspire.web`.
-- **Real Estate** — *0325 Carter Way, VA, 60215*, `(666) 256-8972`.
-- **Online Booking** — `1-800-123-986563` (USA), `+123-456-598632` (intl).
-- **Under the trees** — Twitter handle *Under the tree*, document
-  `/docs/NIST.SP.800-63a.pdf`.
-
-Individually trivia; together a contact graph and a list of document paths
-worth pulling for metadata (see §7).
-
-## 3. WHOIS — infrastructure ownership
+The scoped target for this case study was:
 
 ```text
-Domain Name:                CERTIFIEDHACKER.COM
-Registry Domain ID:         88849376_DOMAIN_COM-VRSN
-Registrar WHOIS Server:     whois.networksolutions.com
-Registrar URL:              http://networksolutions.com
-Updated Date:               2021-05-30T08:52:04Z
-Creation Date:              2002-07-30T00:32:00Z
-Registry Expiry Date:       2022-07-30T00:32:00Z
-Registrar:                  Network Solutions, LLC
-Registrar IANA ID:          2
-Registrar Abuse Contact:    abuse@web.com / +1.8003337680
-Domain Status:              clientTransferProhibited
-Name Server:                NS1.BLUEHOST.COM
-Name Server:                NS2.BLUEHOST.COM
-DNSSEC:                      unsigned
+Domain: certifiedhacker.com
+IP:     162.241.216.11
+Host:   BLUEHOST / Unified Layer shared hosting
 ```
 
-What an analyst actually reads out of this:
+The research used a passive-first methodology:
 
-- **Creation 2002, registrar Network Solutions** — a long-lived domain;
-  good Wayback coverage is likely (confirmed in §6).
-- **Name servers on BLUEHOST** — consistent with the shared-hosting
-  hypothesis from §1.
-- **`DNSSEC: unsigned`** — DNS responses are not cryptographically
-  protected; relevant to any later DNS-spoofing or cache-poisoning
-  considerations.
-- **`clientTransferProhibited`** — a registrar lock; noted, not actionable
-  here, but part of a complete picture.
+1. Collect visible website information and people-facing details.
+2. Query registration and infrastructure records.
+3. Mine public technical databases.
+4. Recover archived URLs and documents.
+5. Enumerate subdomains from Certificate Transparency.
+6. Validate exposed services with active scanning.
+7. Extract metadata from public files.
+8. Correlate findings into attack paths and remediation actions.
 
-## 4. Subdomain discovery via Certificate Transparency
+The active portion was limited to service discovery and Nmap vulnerability
+scripts against the training host. No credential attacks, exploitation,
+destructive testing, persistence, lateral movement, or data exfiltration were
+performed.
 
-Every publicly trusted TLS certificate is logged in Certificate
-Transparency. `crt.sh` makes those logs queryable, which makes it one of
-the highest-signal *passive* subdomain sources available — the target
-itself published these names by requesting certificates for them.
+## Methodology Map
 
-A `crt.sh` query (`https://crt.sh/?q=certifiedhacker.com`) returned
-certificates covering a large set of Subject Alternative Names. Rather than
-eyeball the HTML, the candidates were extracted and then validated by
-liveness — a host in a cert is interesting; a host that *answers* is a
-target:
+The workflow maps cleanly to MITRE ATT&CK Reconnaissance (TA0043):
+
+| Research Activity | ATT&CK Technique | Purpose |
+|---|---|---|
+| Website HUMINT review | Gather Victim Identity Information (T1589), Gather Victim Org Information (T1591) | Identify names, roles, email formats, phone numbers, and social handles. |
+| WHOIS review | Gather Victim Network Information (T1590.001) | Identify registrar, creation dates, nameservers, DNSSEC posture, and hosting assumptions. |
+| Certificate Transparency | Search Open Technical Databases (T1596.003) | Discover subdomains and certificate-linked infrastructure. |
+| Google dorking | Search Open Websites/Domains (T1593) | Find public references, GitHub mentions, known lab paths, and exposed breadcrumbs. |
+| Shodan review | Search Open Technical Databases (T1596) | Obtain passive service banners and hosting metadata. |
+| Wayback review | Search Open Websites/Domains (T1593) | Recover deleted or delinked URLs and documents. |
+| Nmap scanning | Active Scanning (T1595.001 / T1595.002) | Validate exposed services and weak configurations. |
+| Metadata extraction | Gather Victim Org Information (T1591) | Recover authoring software, timestamps, platform hints, and internal context. |
+
+This ordering is intentional. Passive sources reduce noise and help define a
+focused active-scan plan. In a professional assessment, this is the difference
+between targeted validation and blind scanning.
+
+## Findings Overview
+
+| ID | Finding | Evidence Source | Risk | Research Value |
+|---|---|---|---|---|
+| R-01 | Public website leaks names, job roles, emails, phone numbers, addresses, and social handles. | Website pages | Medium | Enables targeted phishing, username generation, and pretext development. |
+| R-02 | Reused handle `sanneterpstra` appears across social profiles. | Under Construction page | Medium | Enables cross-platform identity pivoting. |
+| R-03 | Domain uses Bluehost nameservers and unsigned DNSSEC posture. | WHOIS | Low | Confirms hosting model and DNS trust posture. |
+| R-04 | Certificate Transparency reveals multiple subdomains, including `iam`, `mail`, `webmail`, `sftp`, `soc`, and `trustcenter`. | crt.sh | Medium | Expands target surface and prioritizes high-value services. |
+| R-05 | Public GitHub references and lab-related paths are discoverable by dorking. | Google dorking | Low to Medium | Reveals third-party mentions and possible known routes. |
+| R-06 | Shodan identifies the host as Unified Layer / Bluehost infrastructure and exposes passive service intelligence. | Shodan | Informational | Supports active scan planning and hosting attribution. |
+| R-07 | Wayback contains archived documents and URLs, including old NIST-related files. | Wayback Machine | Medium | Archived documents can outlive cleanup and leak contacts or metadata. |
+| R-08 | Internet-facing service surface includes FTP, SSH, SMTP, POP3, IMAP, HTTP, HTTPS, MySQL, PostgreSQL, and mail-over-TLS ports. | Nmap | High | Large external attack surface; databases exposed to the internet are high-value leads. |
+| R-09 | Nmap vuln scripts confirmed weak 1024-bit Diffie-Hellman parameters on mail-related TLS services. | Nmap `ssl-dh-params` | High | Validated cryptographic weakness, not only a version-based suspicion. |
+| R-10 | Public images disclose authoring tools and timestamps through metadata. | ExifTool | Low | Helps build environment assumptions and realistic pretexts. |
+
+## Baseline Footprint
+
+Before collecting anything else, establish anchor facts. A good recon workflow
+keeps these values stable because every later pivot depends on them.
+
+```text
+Hostname: certifiedhacker.com
+Provider: BLUEHOST
+IP:       162.241.216.11
+```
+
+These facts immediately shape the research plan:
+
+- The hostname drives WHOIS, Certificate Transparency, Google dorking, and
+  Wayback queries.
+- The IP drives Shodan review, reverse hosting assumptions, and active scanning.
+- The Bluehost provider signal suggests shared hosting, which means some
+  services and banners may belong to the hosting environment rather than the
+  individual training site.
+
+That last point matters. A researcher must separate "observed on the same IP"
+from "owned by the target application." Shared hosting can produce noisy
+attribution, so every technical claim should say whether it is confirmed at the
+domain, the IP, the virtual host, or only the hosting provider layer.
+
+## HUMINT From Website Content
+
+The first data source was the website itself. This stage is sometimes dismissed
+as manual browsing, but it is one of the highest-signal recon steps. People,
+roles, email formats, phone numbers, addresses, documents, and social links are
+often more useful than a raw port list.
+
+### P-folio
+
+Page:
+
+```text
+http://certifiedhacker.com/P-folio/index.html
+```
+
+Observed contact information:
+
+```text
+Organization: Systematic Software Limited
+Address:      2512 Old Road - Alian Street Alioha - Arizuwa
+ZIP:          01234-567
+Phone:        +90 123 45 67
+Email:        aalia@alisan.com
+```
+
+Observed staff:
+
+| Name | Role | Recon Value |
+|---|---|---|
+| Samuel Andrews | Network Administrator | High-value technical identity. The role implies access to network hardware, services, and administrative workflows. |
+| Jonathon T. | Human Resource | Useful for HR-themed pretexts, onboarding lures, document requests, and identity-verification stories. |
+| Margerete Peterson | Manager (HRM) | Authority figure. Useful for business-email-compromise style pretexts in a real engagement. |
+
+The combination of a named network administrator and HR contacts is useful
+because it supports both technical and human attack paths. For example, a
+network administrator identity can guide password-spray username lists or help
+prioritize exposed management interfaces. HR identities can support carefully
+scoped social-engineering simulations if that is included in the engagement.
+
+The email value `aalia@alisan.com` also gives a format to test against other
+names. Even if the email domain is not the target domain, observed naming
+conventions help generate candidate identities:
+
+```text
+first@domain
+firstname.lastname@domain
+firstinitiallastname@domain
+```
+
+In a professional report, this is not a finding by itself. It becomes an
+input into identity enumeration and pretext risk.
+
+### Under Construction
+
+Page:
+
+```text
+http://certifiedhacker.com/Under%20Construction/index.html
+```
+
+Observed social links:
+
+```text
+Facebook: http://www.facebook.com/san.terpstra
+Flickr:   http://flickr.com/photos/sanneterpstra
+Twitter:  http://twitter.com/sanneterpstra
+Skype:    skype:sanneterpstra?call
+```
+
+Observed document:
+
+```text
+http://certifiedhacker.com/docs/NIST.SP.800-63-3.pdf
+```
+
+The key observation is username reuse. The handle `san.terpstra` /
+`sanneterpstra` appears across several platforms. A reused public handle lets a
+researcher pivot from a single website to a broader identity graph. In a red
+team, this can support:
+
+- social profile discovery;
+- likely personal email or username generation;
+- password-reuse risk assessment;
+- social-engineering pretext validation;
+- document and image correlation across platforms.
+
+The linked NIST document is also important because document paths often lead to
+metadata extraction and archive discovery.
+
+### Social Media
+
+Page:
+
+```text
+http://certifiedhacker.com/Social%20Media/index.html
+```
+
+Observed information:
+
+```text
+Email:            contact@unite-magazine-community.com
+Phone:            (888) 564.2891
+Address:          1658 Street Ln., City, ST 6523
+Customer Service: 1-800-123-986563
+```
+
+This data increases the target's contact graph. For an assessment, the value is
+not only "there is a phone number." The value is that numbers and emails allow
+the researcher to identify departments, support workflows, third-party brands,
+and possible impersonation routes.
+
+### Corporate Learning Website
+
+Page:
+
+```text
+http://certifiedhacker.com/corporate-learning-website/01-homepage.html
+```
+
+Observed information:
+
+```text
+Address: 45 Cornscrew Drive Washington, DC, 20500
+
+Telephone:
+  202-483-1111
+  896-563-2323
+  156-542-9532
+
+Fax:
+  202-483-1111
+
+Email:
+  info@introspire.web
+  sales@introspire.web
+  support@introspire.web
+```
+
+The role-based mailboxes are useful because they suggest function-specific
+entry points. `support@`, `sales@`, and `info@` addresses often feed ticketing
+systems or shared inboxes. Shared inboxes are commonly monitored by multiple
+users, which changes the social-engineering risk profile.
+
+### Real Estate
+
+Page:
+
+```text
+http://certifiedhacker.com/Real%20Estates/index.html
+```
+
+Observed information:
+
+```text
+Office:  0325 Carter Way, VA, 60215
+Phone:   (666) 256-8972
+```
+
+This looks minor, but it still contributes to the organization profile. Physical
+addresses are useful for validating brands, finding satellite offices, and
+building realistic pretexts.
+
+### Online Booking
+
+Observed phone numbers:
+
+```text
+USA:           1-800-123-986563
+International: +123-456-598632
+```
+
+Repeated phone numbers across pages are correlation points. They can identify
+shared templates, reused content, or a central support line.
+
+### Under the Trees
+
+Page:
+
+```text
+http://certifiedhacker.com/Under%20the%20trees/index.html
+```
+
+Observed information:
+
+```text
+Twitter:       Under the tree
+Document file: http://certifiedhacker.com/docs/NIST.SP.800-63a.pdf
+```
+
+This adds another document path and another social artifact. Document paths are
+especially useful because they can be queried directly, searched in archives,
+and fed into metadata extraction.
+
+## HUMINT Analysis
+
+The people-facing surface produced several intelligence classes:
+
+| Data Type | Examples | Why It Matters |
+|---|---|---|
+| Named identities | Samuel Andrews, Jonathon T., Margerete Peterson | Supports targeted identity enumeration and realistic pretexts. |
+| Job roles | Network Administrator, HR, HRM Manager | Helps prioritize targets by likely access and influence. |
+| Emails | `aalia@alisan.com`, `support@introspire.web` | Reveals naming patterns and shared inboxes. |
+| Phone numbers | Multiple local and toll-free numbers | Enables vishing simulation if authorized. |
+| Social handles | `sanneterpstra` | Enables cross-platform pivoting. |
+| Documents | NIST PDFs | Enables archive and metadata analysis. |
+
+This is why HUMINT belongs in a technical recon report. It is not separate from
+security research; it becomes the identity and pretext layer of the attack
+surface.
+
+## WHOIS and Registration Intelligence
+
+WHOIS output:
+
+```text
+Domain Name:             CERTIFIEDHACKER.COM
+Registry Domain ID:      88849376_DOMAIN_COM-VRSN
+Registrar WHOIS Server:  whois.networksolutions.com
+Registrar URL:           http://networksolutions.com
+Updated Date:            2021-05-30T08:52:04Z
+Creation Date:           2002-07-30T00:32:00Z
+Registry Expiry Date:    2022-07-30T00:32:00Z
+Registrar:               Network Solutions, LLC
+Registrar IANA ID:       2
+Registrar Abuse Email:   abuse@web.com
+Registrar Abuse Phone:   +1.8003337680
+Domain Status:           clientTransferProhibited
+Name Server:             NS1.BLUEHOST.COM
+Name Server:             NS2.BLUEHOST.COM
+DNSSEC:                  unsigned
+```
+
+Research interpretation:
+
+- The domain was created in 2002, so historical records and archived URLs are
+  likely to exist.
+- Network Solutions is the registrar, while Bluehost nameservers host DNS.
+- `clientTransferProhibited` indicates registrar transfer lock. This is normal
+  but still worth documenting.
+- `DNSSEC: unsigned` means DNS responses are not protected by DNSSEC. This is
+  not immediately exploitable in this case, but it is part of the domain trust
+  posture.
+
+WHOIS does not provide a vulnerability by itself here. It provides
+infrastructure context and validates the next pivots: nameservers, historical
+timeline, and archive likelihood.
+
+## Certificate Transparency Enumeration
+
+Certificate Transparency logs are public ledgers of TLS certificates. When an
+organization requests certificates for subdomains, those names can appear in CT
+logs even if they are not linked from the main website.
+
+Query:
+
+```text
+https://crt.sh/?q=certifiedhacker.com
+```
+
+I used a small Python script to extract candidate names and then validate which
+hosts responded over HTTP:
 
 ```python
 import requests
 import re
 
 headers = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) '
-                  'AppleWebKit/537.36 (KHTML, like Gecko) '
-                  'Chrome/39.0.2171.95 Safari/537.36'
+    'User-Agent': (
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) '
+        'Chrome/39.0.2171.95 Safari/537.36'
+    )
 }
 
 if __name__ == '__main__':
@@ -177,8 +414,10 @@ if __name__ == '__main__':
     result = requests.get(orig_url)
     links = re.findall(r'>(.+?certifiedhacker.com)', result.text)
     result.close()
+
     links = list(dict.fromkeys(links))
     links.sort()
+
     for link in links:
         try:
             new_request = requests.get('http://' + link, headers=headers)
@@ -188,52 +427,86 @@ if __name__ == '__main__':
             pass
 ```
 
-Live subdomains recovered (HTTP 200), including `www.` mirrors of each:
+Live hosts recovered:
 
 ```text
-blog.certifiedhacker.com           news.certifiedhacker.com
-events.certifiedhacker.com         notifications.certifiedhacker.com
-fleet.certifiedhacker.com          pstn.certifiedhacker.com
-iam.certifiedhacker.com            sftp.certifiedhacker.com
-itf.certifiedhacker.com            soc.certifiedhacker.com
-mail.certifiedhacker.com           trustcenter.certifiedhacker.com
-                                   webmail.certifiedhacker.com
+blog.certifiedhacker.com
+events.certifiedhacker.com
+fleet.certifiedhacker.com
+iam.certifiedhacker.com
+itf.certifiedhacker.com
+mail.certifiedhacker.com
+news.certifiedhacker.com
+notifications.certifiedhacker.com
+pstn.certifiedhacker.com
+sftp.certifiedhacker.com
+soc.certifiedhacker.com
+trustcenter.certifiedhacker.com
+webmail.certifiedhacker.com
+www.blog.certifiedhacker.com
+www.certifiedhacker.com
+www.events.certifiedhacker.com
+www.fleet.certifiedhacker.com
+www.iam.certifiedhacker.com
+www.itf.certifiedhacker.com
+www.news.certifiedhacker.com
+www.notifications.certifiedhacker.com
+www.pstn.certifiedhacker.com
+www.sftp.certifiedhacker.com
+www.soc.certifiedhacker.com
+www.trustcenter.certifiedhacker.com
 ```
 
-Reading this list as an attacker:
+Subdomain prioritization:
 
-- **`iam.`** — an identity/access surface. Highest-priority target; IAM is
-  where authentication and authorization live.
-- **`sftp.` / `webmail.` / `mail.`** — credential-bearing services and
-  file transfer; prime targets for credential attacks and data access.
-- **`soc.` / `trustcenter.`** — security-operations and trust surfaces;
-  interesting both as targets and as indicators of the defender's posture.
+| Subdomain | Priority | Reason |
+|---|---:|---|
+| `iam.certifiedhacker.com` | High | Identity and access management surfaces are high-impact targets. |
+| `mail.certifiedhacker.com` / `webmail.certifiedhacker.com` | High | Credential-bearing mail surfaces; likely authentication targets. |
+| `sftp.certifiedhacker.com` | High | File transfer surface; often tied to credentials and data exposure. |
+| `soc.certifiedhacker.com` | Medium | Security operations naming can reveal defensive tooling or workflows. |
+| `trustcenter.certifiedhacker.com` | Medium | Trust/compliance portals often expose documents and vendor integrations. |
+| `fleet.certifiedhacker.com` | Medium | May indicate asset, device, or vehicle management depending on context. |
+| `blog`, `news`, `events`, `notifications` | Low to Medium | Content surfaces; useful for tech stack, archived content, and account flows. |
 
-CT enumeration converted one domain into a prioritized target list without
-sending a single packet to those hosts.
+Certificate Transparency is one of the best passive recon sources because the
+target's own certificate requests publish infrastructure names. It turned one
+root domain into a prioritized attack-surface inventory.
 
-## 5. Google dorking
+## Google Dorking
 
-Targeted search-engine queries surface references the target did not intend
-to be correlated. Querying:
+The Google dork used:
 
 ```text
 "certifiedhacker.com" site:github.com
 ```
 
-returned ~7 results — public GitHub repositories (the *Ethical-Hacking-Labs*
-collection) that reference the host across recon, theHarvester, Maltego, and
-ZAP exercises, plus a "Misconfigured access control" issue thread pointing
-at `/corporate-learning-website/index.php`. Dorking is the cheapest way to
-find third-party mentions, exposed files, and known-misconfiguration
-breadcrumbs.
+This returned several public GitHub references connected to ethical hacking
+labs and exercises. Dorking also surfaced references to paths such as:
 
-## 6. Passive technical databases
+```text
+/corporate-learning-website/index.php
+```
 
-### 6.1 Shodan
+The research value is twofold:
 
-`https://www.shodan.io/host/162.241.216.11` returns Shodan's last banner
-grab — intelligence about the host *without scanning it ourselves*:
+- Third-party references can reveal old exercises, writeups, scanners, or
+  vulnerable paths that are not obvious from the live site.
+- Public issues or lab notes can reveal known weaknesses, expected endpoints,
+  and common student attack paths.
+
+Google dorking should be treated as intelligence triage. It does not confirm a
+vulnerability, but it tells the researcher what to validate.
+
+## Shodan Passive Intelligence
+
+Host lookup:
+
+```text
+https://www.shodan.io/host/162.241.216.11
+```
+
+Observed Shodan context:
 
 ```text
 Hostnames:     bluehost.com, box5331.bluehost.com
@@ -245,180 +518,410 @@ ISP:           Oso Grande IP Services, LLC
 ASN:           AS26337
 ```
 
-Shodan also implies version-based vulnerabilities. Its banner for the SSH
-service (OpenSSH on this shared host) maps to a long list of historically
-reported CVEs — useful as *leads to verify*, not as confirmed findings:
+This confirms the shared hosting hypothesis. Shodan is useful here because it
+collects banners without requiring us to scan first. It is a passive way to
+build a service hypothesis.
 
-| CVE | Summary |
+However, a researcher must be careful with Shodan CVE output. CVEs inferred
+from banners are leads, not confirmed vulnerabilities. For example, Shodan may
+associate OpenSSH banners with historical CVEs such as:
+
+| CVE | Shodan-Inferred Risk |
 |---|---|
-| CVE-2011-5000 | `ssh_gssapi_parse_ename` DoS (memory consumption) when gssapi-with-mic is enabled. |
-| CVE-2010-4478 | J-PAKE shared-secret bypass / forged authentication. |
-| CVE-2014-1692 | `hash_buffer` uninitialized data when J-PAKE is built in (DoS / memory corruption). |
-| CVE-2010-5107 | Fixed login time limit → connection-slot exhaustion DoS. |
-| CVE-2017-15906 | `process_open` allows zero-length file creation in read-only SFTP mode. |
-| CVE-2016-10708 | Out-of-sequence NEWKEYS → NULL deref / daemon crash. |
-| CVE-2016-0777 | `resend_bytes` roaming client info leak (can read a private key). |
-| CVE-2011-4327 | `ssh-keysign` leaks key info via ptrace on certain platforms. |
-| CVE-2010-4755 | `(1) remote_glob` / `(2) process_put` crafted-glob DoS. |
-| CVE-2012-0814 | `auth-options.c` debug messages leak `authorized_keys` command options. |
+| CVE-2011-5000 | `ssh_gssapi_parse_ename` denial of service under specific GSSAPI conditions. |
+| CVE-2010-4478 | J-PAKE shared-secret authentication weakness in affected builds. |
+| CVE-2014-1692 | J-PAKE-related uninitialized data / crash risk. |
+| CVE-2010-5107 | Connection-slot exhaustion due to fixed login grace behavior. |
+| CVE-2017-15906 | Zero-length file creation through read-only SFTP mode. |
+| CVE-2016-10708 | Out-of-sequence NEWKEYS crash condition. |
+| CVE-2016-0777 | Roaming client information leak. |
+| CVE-2011-4327 | `ssh-keysign` key information exposure in specific local conditions. |
+| CVE-2010-4755 | Crafted glob denial of service in SFTP handling. |
+| CVE-2012-0814 | Debug messages leak command options in `authorized_keys`. |
 
-The discipline here matters: these are **version-implied**, not validated.
-They become findings only after active confirmation, but they tell us
-*where to look* and they shape the active-scan plan in §7.
+These should be written as "potentially relevant" until validated by direct
+version checking and exploitability analysis. This distinction is what
+separates a professional report from a tool dump.
 
-### 6.2 Wayback Machine
+## Wayback Machine Research
 
-`https://web.archive.org/web/*/http://certifiedhacker.com` shows ~708
-captured URLs. Crucially, it has archived **documents that are no longer
-linked** from the live site, including:
-
-- `/docs/822990.pdf`, `/docs/923332.pdf`, `/docs/NIST.SP.800-63a.pdf`,
-  `/docs/NIST.SP.800-63-3.pdf`
-- `Technology-Innovation-How-To-2.ppt` — which leaks an internal contact:
-  **Marc G. Stanley | (301) 975-2162 | marc.stanley@nist.gov**
-
-Archived-but-delinked documents are a recurring high-value find: the
-organization "removed" them, but the archive didn't, and they often carry
-internal names, emails, and metadata.
-
-## 7. Active scanning with Nmap
-
-Only now — passive map in hand — do we touch the target. The Shodan-implied
-service list and the CT subdomain list tell us exactly what to verify.
-
-### 7.1 Service discovery
-
-```bash
-$ nmap certifiedhacker.com
-```
+Wayback query:
 
 ```text
-PORT      STATE  SERVICE
-21/tcp    open   ftp
-22/tcp    open   ssh
-25/tcp    open   smtp
-26/tcp    open   rsftp
-53/tcp    open   domain
-80/tcp    open   http
-110/tcp   open   pop3
-143/tcp   open   imap
-443/tcp   open   https
-465/tcp   open   smtps
-587/tcp   open   submission
-993/tcp   open   imaps
-995/tcp   open   pop3s
-2222/tcp  open   EtherNetIP-1
-3306/tcp  open   mysql
-5432/tcp  open   postgresql
+https://web.archive.org/web/*/http://certifiedhacker.com
 ```
 
-The notable surface, read as an attacker:
+The archive contained hundreds of historical URLs, including document paths
+that may not be obvious from current navigation:
 
-- A **full mail stack** (25/110/143/465/587/993/995) — large credential and
-  user-enumeration surface.
-- **`3306` MySQL and `5432` PostgreSQL exposed to the internet** — database
-  ports should never be internet-facing; immediate high-priority leads.
-- **`2222` (EtherNetIP-1)** — a non-standard port worth fingerprinting; on
-  shared hosts this is frequently a second SSH or admin service.
+```text
+/docs/822990.pdf
+/docs/923332.pdf
+/docs/NIST.SP.800-63a.pdf
+/docs/NIST.SP.800-63-3.pdf
+Technology-Innovation-How-To-2.ppt
+```
 
-### 7.2 Vulnerability scripts
+One archived document reference contained an internal-style contact:
+
+```text
+Marc G. Stanley | (301) 975-2162 | marc.stanley@nist.gov
+```
+
+The original extracted note had a typo (`nist.giv`), but the intended address
+format is clearly NIST-related based on the document context.
+
+Wayback value:
+
+- It can reveal documents removed from live navigation.
+- It can recover old endpoints and parameters.
+- It can show technology and content changes over time.
+- It can expose third-party documents that still contain author metadata.
+
+Archive findings should be triaged carefully. An archived file is evidence of
+historical exposure, but the current impact depends on whether the file is still
+reachable, sensitive, and relevant.
+
+## Active Service Enumeration
+
+After passive mapping, active validation was performed with Nmap.
+
+Command:
 
 ```bash
-$ nmap certifiedhacker.com --script=vuln \
+nmap certifiedhacker.com
+```
+
+Observed open services:
+
+```text
+PORT      STATE SERVICE
+21/tcp    open  ftp
+22/tcp    open  ssh
+25/tcp    open  smtp
+26/tcp    open  rsftp
+53/tcp    open  domain
+80/tcp    open  http
+110/tcp   open  pop3
+143/tcp   open  imap
+443/tcp   open  https
+465/tcp   open  smtps
+587/tcp   open  submission
+993/tcp   open  imaps
+995/tcp   open  pop3s
+2222/tcp  open  EtherNetIP-1
+3306/tcp  open  mysql
+5432/tcp  open  postgresql
+```
+
+Service analysis:
+
+| Service Area | Ports | Risk Notes |
+|---|---|---|
+| FTP | 21 | Legacy file transfer; investigate anonymous access, weak credentials, and plaintext exposure. |
+| SSH | 22, possibly 2222 | Administrative access surface; validate version and authentication policy. |
+| Mail | 25, 110, 143, 465, 587, 993, 995 | Large credential-bearing surface; validate TLS, user enumeration, auth methods, and weak cipher suites. |
+| DNS | 53 | Validate recursion, zone transfer, and authoritative behavior. |
+| Web | 80, 443 | Main application surface; crawl, fingerprint, and test known discovered paths. |
+| Databases | 3306, 5432 | High-risk exposure. Internet-facing MySQL/PostgreSQL should be restricted unless explicitly required. |
+| Unknown / non-standard | 26, 2222 | Requires fingerprinting; non-standard ports often hide alternate admin services. |
+
+The database ports are the most concerning from an external attack-surface
+perspective. Even if authentication is strong, exposing database services to the
+internet increases brute-force, fingerprinting, vulnerability, and
+misconfiguration risk.
+
+## Vulnerability Script Validation
+
+Nmap vulnerability scripts were run against the identified open ports:
+
+```bash
+nmap certifiedhacker.com --script=vuln \
   -p 21,22,25,26,53,80,110,143,443,465,587,993,995,2222,3306,5432
 ```
 
-The mail-over-TLS ports (110, 143, 993, 995) confirmed a weak
-Diffie-Hellman key exchange — a finding now *validated*, not merely
-version-implied:
+Validated finding:
 
 ```text
-Vulnerable ports: 110 (pop3), 143 (imap), 993 (imaps), 995 (pop3s)
-| ssl-dh-params:
-|   VULNERABLE:
-|   Diffie-Hellman Key Exchange Insufficient Group Strength
-|     State: VULNERABLE
-|       Transport Layer Security (TLS) services that use Diffie-Hellman
-|       groups of insufficient strength, especially those using one of a
-|       few commonly shared groups, may be susceptible to passive
-|       eavesdropping attacks.
-|     Check results:
-|       WEAK DH GROUP 1
-|         Cipher Suite:        TLS_DHE_RSA_WITH_AES_128_GCM_SHA256
-|         Modulus Type:        Safe prime
-|         Modulus Source:      Unknown/Custom-generated
-|         Modulus Length:      1024
-|         Generator Length:    8
-|         Public Key Length:   1024
-|     References:
-|_      https://weakdh.org
+Vulnerable ports:
+  110/tcp  pop3
+  143/tcp  imap
+  993/tcp  imaps
+  995/tcp  pop3s
+
+ssl-dh-params:
+  VULNERABLE:
+    Diffie-Hellman Key Exchange Insufficient Group Strength
+
+  Check results:
+    WEAK DH GROUP 1
+      Cipher Suite:       TLS_DHE_RSA_WITH_AES_128_GCM_SHA256
+      Modulus Type:       Safe prime
+      Modulus Source:     Unknown/Custom-generated
+      Modulus Length:     1024
+      Generator Length:   8
+      Public Key Length:  1024
+
+  Reference:
+    https://weakdh.org
 ```
 
-A 1024-bit DH group is the *Logjam* class of weakness: a sufficiently
-resourced passive adversary can recover session keys and decrypt captured
-mail traffic. This single confirmed finding is the kind of concrete,
-defensible result a recon phase is supposed to produce.
+This is stronger evidence than Shodan banner inference because it is active
+validation. The services accepted a DHE cipher suite using a 1024-bit group.
+That fits the weak Diffie-Hellman / Logjam class of issues.
 
-## 8. Metadata harvesting (ExifTool)
+Impact:
 
-Public images and documents routinely carry authoring metadata — software,
-timestamps, hardware, and sometimes internal usernames. Pulling EXIF from
-site images:
+- A passive adversary with sufficient resources may be able to decrypt captured
+  TLS sessions that use weak shared DH groups.
+- Mail protocols are sensitive because they carry credentials and private
+  communications.
+- Even if modern clients prefer stronger suites, weak suites should be removed
+  because negotiation behavior can vary across clients and downgrade conditions.
+
+Recommended remediation:
+
+- Disable export-grade and weak DHE suites.
+- Use ECDHE suites with modern curves where possible.
+- If DHE must remain enabled, use a unique DH group of at least 2048 bits.
+- Validate with `testssl.sh`, Nmap `ssl-enum-ciphers`, and external TLS
+  scanners after remediation.
+
+## Metadata Harvesting With ExifTool
+
+Public images and documents can leak operational context. ExifTool was used to
+inspect downloaded assets.
+
+Example: `featured-4.jpg`
 
 ```text
-featured-4.jpg
-  Software:             Paint.NET v3.5.6
-  File Creation:        2022:05:04 08:49:44+07:00
-  Image Size:           640x480
-
-home_slider2.jpg
-  Creator Tool:         Adobe Photoshop CS3 Windows
-  Modify Date:          2009:04:28 22:48:34
-  Device Manufacturer:  Hewlett-Packard
-  Primary Platform:     Microsoft Corporation
-  Profile Copyright:    Copyright (c) 1998 Hewlett-Packard Company
+ExifTool Version Number     : 12.41
+File Name                   : featured-4.jpg
+File Size                   : 180 KiB
+File Modification Date/Time : 2022:05:04 08:49:46+07:00
+File Creation Date/Time     : 2022:05:04 08:49:44+07:00
+File Type                   : JPEG
+MIME Type                   : image/jpeg
+X Resolution                : 300
+Y Resolution                : 300
+Software                    : Paint.NET v3.5.6
+Image Width                 : 640
+Image Height                : 480
+Image Size                  : 640x480
 ```
 
-On its own, trivia. Combined with the named staff (§2.1), the reused
-`sanneterpstra` handle (§2.2), and the Wayback-leaked `marc.stanley@nist.gov`
-(§6.2), it builds a *credible pretext*: software in use, timezone offset
-(`+07:00`), and toolchain — all detail that makes a social-engineering
-approach look authentic.
+Example: `home_slider2.jpg`
 
-## 9. Analysis: turning recon into an attack plan
+```text
+Software              : Adobe Photoshop CS3 Windows
+Modify Date           : 2009:04:28 22:48:34
+Writer Name           : Adobe Photoshop
+Reader Name           : Adobe Photoshop CS3
+Creator Tool          : Adobe Photoshop CS3 Windows
+Create Date           : 2009:04:28 22:48:34+03:00
+Primary Platform      : Microsoft Corporation
+Device Manufacturer   : Hewlett-Packard
+Profile Creator       : Hewlett-Packard
+Profile Copyright     : Copyright (c) 1998 Hewlett-Packard Company
+```
 
-The point of this much collection is the synthesis. From the data above, a
-prioritized plan emerges with zero guesswork:
+Research interpretation:
 
-1. **`iam.` and the exposed `3306`/`5432`** — the highest-impact technical
-   targets. Internet-facing databases and an identity surface are where a
-   real intrusion would start.
-2. **Mail stack + confirmed weak DH** — a validated cryptographic weakness
-   plus a large credential surface; credential attacks and traffic
-   interception are in scope.
-3. **HUMINT graph** — named admins (Samuel Andrews / network), HR contacts
-   (Jonathon T., Margerete Peterson), reused handle `sanneterpstra`, and
-   `marc.stanley@nist.gov` — the social-engineering and password-attack
-   inventory.
-4. **Wayback/dork artifacts** — delinked documents and a known
-   access-control misconfiguration on `/corporate-learning-website/` worth
-   probing.
+- Paint.NET and Adobe Photoshop CS3 indicate authoring tools that may exist in
+  the content-production workflow.
+- Timestamps reveal timezones and old asset age.
+- Hewlett-Packard and Microsoft platform metadata support environment
+  assumptions, but should not be overstated.
 
-## 10. Takeaways
+Metadata rarely gives direct compromise by itself. Its value is correlation.
+When combined with staff names, emails, public documents, and social handles,
+it helps build credible operational context.
 
-- **Passive-first is a discipline, not a preference.** WHOIS, `crt.sh`,
-  Shodan, Wayback, and dorking built ~80% of the map with zero packets to
-  the target — and with zero legal/stealth risk.
-- **Certificate Transparency is the single best passive subdomain source.**
-  The target signs its own infrastructure into a public log.
-- **Version-implied CVEs are leads, not findings.** Shodan tells you where
-  to look; only active validation (the confirmed weak-DH result) produces a
-  defensible conclusion.
-- **HUMINT is technical recon.** Names, roles, reused handles, and leaked
-  internal contacts feed phishing and password attacks as directly as an
-  open port feeds an exploit.
-- **Archives and metadata outlive cleanup.** Delinked Wayback documents and
-  EXIF fields routinely expose what the organization thought it had removed.
+## Evidence Quality Model
+
+During research, I classify evidence into three levels:
+
+| Level | Description | Example From This Case |
+|---|---|---|
+| Observed | Directly visible in a page, document, record, or tool output. | Contact information on website pages; WHOIS data. |
+| Inferred | Reasonable conclusion from observed data, but not independently validated. | Shodan CVEs inferred from service banners. |
+| Validated | Confirmed through active testing or reproducible checks. | Weak DH parameters confirmed by Nmap `ssl-dh-params`. |
+
+This model prevents overclaiming. It is acceptable to list inferred risks, but
+they must be labeled as leads. Only validated evidence should become a confirmed
+finding.
+
+## Attack-Path Synthesis
+
+After collection, the next step is synthesis. The following paths would be
+prioritized in a real authorized engagement.
+
+### Path 1: Identity and Mail Surface
+
+Inputs:
+
+- `iam.certifiedhacker.com`
+- `mail.certifiedhacker.com`
+- `webmail.certifiedhacker.com`
+- full mail stack on 25/110/143/465/587/993/995
+- names and roles from HUMINT
+- weak DH on mail-related TLS services
+
+Research hypothesis:
+
+An attacker would likely target identity and mail first because those surfaces
+combine authentication, sensitive communication, and many human users.
+
+Validation plan:
+
+- Fingerprint login portals.
+- Check TLS configuration across mail endpoints.
+- Validate whether user enumeration exists.
+- Review password policy if allowed by scope.
+- Test mail-related security controls only if explicitly authorized.
+
+### Path 2: Database Exposure
+
+Inputs:
+
+- MySQL exposed on 3306.
+- PostgreSQL exposed on 5432.
+- Hosting environment appears shared.
+
+Research hypothesis:
+
+Internet-facing database ports are high-value because a single weak password,
+old version, misconfiguration, or exposed admin interface can create direct
+data-access risk.
+
+Validation plan:
+
+- Fingerprint versions without authentication where possible.
+- Confirm whether access is restricted by source IP.
+- Check for default banners and supported auth methods.
+- Avoid brute force unless explicitly authorized.
+
+### Path 3: Archived Document and Metadata Pivot
+
+Inputs:
+
+- Wayback document paths.
+- NIST PDFs and old PowerPoint file.
+- ExifTool metadata.
+- Staff and contact information.
+
+Research hypothesis:
+
+Documents and archived files may expose names, authoring software, internal
+contacts, old paths, or historical technology hints that are no longer visible
+on the live site.
+
+Validation plan:
+
+- Download only public documents in scope.
+- Extract metadata and embedded links.
+- Compare archived URLs against current availability.
+- Identify sensitive data exposure, not just file existence.
+
+### Path 4: Subdomain-Specific Web Testing
+
+Inputs:
+
+- CT-derived hosts: `iam`, `sftp`, `soc`, `trustcenter`, `fleet`, `blog`,
+  `events`, `notifications`, `pstn`.
+
+Research hypothesis:
+
+Each subdomain may represent a separate application or virtual host with its
+own technology stack, auth boundary, and misconfiguration risk.
+
+Validation plan:
+
+- Crawl each host.
+- Capture headers and TLS configuration.
+- Fingerprint frameworks and login flows.
+- Check for default files, exposed admin panels, and old paths.
+
+## Defensive Recommendations
+
+### Reduce Public HUMINT Exposure
+
+- Remove unnecessary personal names and direct role descriptions from public
+  pages.
+- Use role-based contact forms instead of publishing individual staff details.
+- Review public social links and reused handles.
+- Treat old microsites as part of the current attack surface.
+
+### Harden DNS and Domain Posture
+
+- Evaluate DNSSEC deployment for the domain.
+- Review registrar lock, recovery contacts, and domain-expiry monitoring.
+- Periodically audit authoritative DNS records and stale subdomains.
+
+### Control Certificate Transparency Exposure
+
+CT logs cannot be hidden after certificates are issued, but exposure can be
+managed:
+
+- Avoid unnecessary public SAN names.
+- Use wildcard certificates carefully.
+- Monitor CT logs for unexpected certificates.
+- Decommission unused subdomains and remove DNS records.
+
+### Reduce Internet-Facing Services
+
+- Restrict MySQL and PostgreSQL to trusted networks or private interfaces.
+- Disable FTP or replace it with a hardened file-transfer workflow.
+- Restrict SSH by source IP, enforce key-based authentication, and monitor
+  login attempts.
+- Validate whether port 2222 is intentional and document its purpose.
+
+### Harden Mail TLS
+
+- Remove weak DHE groups.
+- Prefer ECDHE suites.
+- Use at least 2048-bit DH parameters if DHE is required.
+- Re-test POP3/IMAP/SMTP TLS after configuration changes.
+
+### Clean Archives and Metadata
+
+- Strip metadata from public images and documents before publishing.
+- Maintain an inventory of public documents and old microsites.
+- Request archive removals where sensitive documents were historically exposed,
+  understanding that archive removal is not guaranteed.
+- Monitor public search results and GitHub mentions for sensitive references.
+
+## Researcher Notes
+
+Several lessons stand out from this case:
+
+1. Recon is not a checklist. It is a reasoning process.
+2. Tool output must be classified as observed, inferred, or validated.
+3. HUMINT and technical recon are connected; names and roles guide technical
+   testing priorities.
+4. Passive recon can produce most of the target map before active scanning.
+5. Shared hosting complicates attribution, so evidence must be precise.
+6. A single validated issue, such as weak DH on mail services, is more valuable
+   than a long unverified CVE list.
+
+## Final Takeaway
+
+The complete chain from this research can be summarized as:
+
+```text
+website HUMINT
+  -> identity and contact graph
+  -> WHOIS and hosting context
+  -> CT subdomain expansion
+  -> Shodan and Wayback passive enrichment
+  -> Nmap service validation
+  -> weak TLS finding
+  -> metadata correlation
+  -> prioritized attack paths and remediation
+```
+
+That is the role of a security researcher in reconnaissance: not only finding
+facts, but connecting them into evidence, risk, and decisions.
 
 ## References
 
@@ -426,4 +929,4 @@ prioritized plan emerges with zero guesswork:
 - <https://www.shodan.io/host/162.241.216.11>
 - <https://web.archive.org/web/*/http://certifiedhacker.com>
 - <https://weakdh.org>
-- MITRE ATT&CK — Reconnaissance (TA0043)
+- MITRE ATT&CK - Reconnaissance (TA0043)

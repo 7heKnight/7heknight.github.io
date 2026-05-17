@@ -3,12 +3,16 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
 import PentestCard from '../components/PentestCard.astro';
+import RedteamCard from '../components/RedteamCard.astro';
 
 const writeups = (await getCollection('writeups'))
   .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
   .slice(0, 3);
 const pentest = (await getCollection('pentest'))
   .sort((a, b) => (a.data.seriesOrder ?? 99) - (b.data.seriesOrder ?? 99))
+  .slice(0, 3);
+const redteam = (await getCollection('redteam'))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
   .slice(0, 3);
 ---
 <BaseLayout title="7heKnight">
@@ -17,7 +21,8 @@ const pentest = (await getCollection('pentest'))
       <h1>7heKnight<span style="color:var(--muted)">$</span></h1>
       <p>
         Offensive security notes — binary exploitation, exploit development,
-        and mobile pentesting. Two tracks, written as practical runbooks.
+        mobile pentesting, and red team research. Three tracks, written as
+        practical runbooks.
       </p>
     </section>
 
@@ -54,6 +59,24 @@ const pentest = (await getCollection('pentest'))
           date={p.data.date} category={p.data.category}
           difficulty={p.data.difficulty} platform={p.data.platform}
           seriesOrder={p.data.seriesOrder} draft={p.data.draft}
+        />
+      ))}
+    </div>
+
+    <section style="margin-bottom:8px">
+      <h2 style="color:var(--accent);font-family:var(--mono);font-size:1.3rem;margin-bottom:4px">
+        <a href="/redteam/">Red Team &rarr;</a>
+      </h2>
+      <p style="color:var(--muted);margin-bottom:16px">
+        Cyber kill-chain research: OSINT recon &amp; enumeration, Windows host persistence, lateral movement, insecure deserialization.
+      </p>
+    </section>
+    <div class="card-grid">
+      {redteam.map((p) => (
+        <RedteamCard
+          slug={p.slug} title={p.data.title} excerpt={p.data.excerpt}
+          date={p.data.date} category={p.data.category}
+          difficulty={p.data.difficulty} draft={p.data.draft}
         />
       ))}
     </div>
