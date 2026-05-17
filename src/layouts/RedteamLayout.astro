@@ -1,0 +1,53 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { REDTEAM_CATEGORIES } from '../content/config';
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+  title: string;
+  date: Date;
+  category: keyof typeof REDTEAM_CATEGORIES;
+  tags: string[];
+  difficulty: string;
+  excerpt: string;
+  draft: boolean;
+  headings: MarkdownHeading[];
+}
+const { title, date, category, tags, difficulty, excerpt, draft, headings } =
+  Astro.props;
+const toc = headings.filter((h) => h.depth === 2);
+const dateStr = date.toISOString().slice(0, 10);
+---
+<BaseLayout title={title} description={excerpt}>
+  <div class="container">
+    <div class="writeup">
+      <aside class="toc">
+        <h4>Contents</h4>
+        <ul>
+          {toc.map((h) => (
+            <li><a href={`#${h.slug}`}>{h.text}</a></li>
+          ))}
+        </ul>
+      </aside>
+
+      <article class="post">
+        <h1>{title}</h1>
+        <p class="post-meta">{dateStr} &middot; <span class={`badge ${difficulty}`}>{difficulty}</span></p>
+        {draft && <p class="post-meta"><span class="badge draft">draft / incomplete</span></p>}
+        <div class="post-tags">
+          {tags.map((t) => <a class="tag" href={`/tags/${t.toLowerCase()}/`}>#{t}</a>)}
+        </div>
+        <div class="body">
+          <slot />
+        </div>
+      </article>
+
+      <aside class="meta-side">
+        <div class="block">
+          <h4>Category</h4>
+          <a class="tag" href={`/redteam/categories/${category}/`}>{REDTEAM_CATEGORIES[category]}</a>
+        </div>
+      </aside>
+    </div>
+  </div>
+</BaseLayout>

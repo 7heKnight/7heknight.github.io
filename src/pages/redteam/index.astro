@@ -1,0 +1,35 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import RedteamCard from '../../components/RedteamCard.astro';
+
+const posts = (await getCollection('redteam')).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+---
+<BaseLayout title="Red Team">
+  <div class="container">
+    <section class="hero">
+      <h1>$ ./redteam --kill-chain</h1>
+      <p>
+        Offensive research across the cyber kill chain: OSINT recon &amp;
+        enumeration, Windows host persistence, lateral movement over SMB/RPC,
+        and an insecure-deserialization deep dive (CVE-2020-0688). For
+        educational use and authorized testing only.
+      </p>
+    </section>
+    <div class="card-grid">
+      {posts.map((p) => (
+        <RedteamCard
+          slug={p.slug}
+          title={p.data.title}
+          excerpt={p.data.excerpt}
+          date={p.data.date}
+          category={p.data.category}
+          difficulty={p.data.difficulty}
+          draft={p.data.draft}
+        />
+      ))}
+    </div>
+  </div>
+</BaseLayout>

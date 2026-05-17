@@ -1,0 +1,30 @@
+---
+import { REDTEAM_CATEGORIES } from '../content/config';
+interface Props {
+  slug: string;
+  title: string;
+  excerpt: string;
+  date: Date;
+  category: keyof typeof REDTEAM_CATEGORIES;
+  difficulty: string;
+  draft?: boolean;
+}
+const { slug, title, excerpt, date, category, difficulty, draft } = Astro.props;
+const href = `/redteam/${slug}/`;
+const dateStr = date.toISOString().slice(0, 10);
+---
+<article class="card">
+  <a href={href}>
+    <div class="card-noimg">&gt;_</div>
+  </a>
+  <div class="card-body">
+    <div class="card-meta">
+      <span class="card-cat">{REDTEAM_CATEGORIES[category]}</span>
+      <span class={`badge ${difficulty}`}>{difficulty}</span>
+      {draft && <span class="badge draft">draft</span>}
+    </div>
+    <a href={href}><h3>{title}</h3></a>
+    <p>{excerpt}</p>
+    <span class="date">{dateStr}</span>
+  </div>
+</article>

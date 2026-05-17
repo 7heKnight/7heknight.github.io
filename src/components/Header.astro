@@ -10,6 +10,7 @@ const isActive = (p: string) =>
       <a href="/" aria-current={pathname === '/' ? 'page' : undefined}>Home</a>
       <a href="/writeups/" aria-current={isActive('/writeups') || isActive('/categories') ? 'page' : undefined}>Writeups</a>
       <a href="/pentest/" aria-current={isActive('/pentest') ? 'page' : undefined}>Pentest</a>
+      <a href="/redteam/" aria-current={isActive('/redteam') ? 'page' : undefined}>Red Team</a>
       <a href="/tags/" aria-current={isActive('/tags') ? 'page' : undefined}>Tags</a>
       <a href="/about/" aria-current={isActive('/about') ? 'page' : undefined}>About</a>
     </nav>

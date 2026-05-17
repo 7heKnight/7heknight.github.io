@@ -1,0 +1,41 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import RedteamCard from '../../../components/RedteamCard.astro';
+import { REDTEAM_CATEGORIES } from '../../../content/config';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('redteam');
+  return Object.entries(REDTEAM_CATEGORIES).map(([slug, label]) => ({
+    params: { category: slug },
+    props: {
+      label,
+      posts: posts
+        .filter((p) => p.data.category === slug)
+        .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf()),
+    },
+  }));
+}
+const { label, posts } = Astro.props;
+---
+<BaseLayout title={`Red Team: ${label}`}>
+  <div class="container">
+    <section class="hero">
+      <h1>$ grep category={label}</h1>
+      <p>{posts.length} article{posts.length === 1 ? '' : 's'} in this category.</p>
+    </section>
+    <div class="card-grid">
+      {posts.map((p) => (
+        <RedteamCard
+          slug={p.slug}
+          title={p.data.title}
+          excerpt={p.data.excerpt}
+          date={p.data.date}
+          category={p.data.category}
+          difficulty={p.data.difficulty}
+          draft={p.data.draft}
+        />
+      ))}
+    </div>
+  </div>
+</BaseLayout>

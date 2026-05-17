@@ -1,0 +1,36 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import { REDTEAM_CATEGORIES } from '../../../content/config';
+
+const posts = await getCollection('redteam');
+const byCat = Object.entries(REDTEAM_CATEGORIES).map(([slug, label]) => ({
+  slug,
+  label,
+  items: posts
+    .filter((p) => p.data.category === slug)
+    .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf()),
+})).filter((c) => c.items.length > 0);
+---
+<BaseLayout title="Red Team Categories">
+  <div class="container">
+    <section class="hero">
+      <h1>$ ls redteam/categories/</h1>
+      <p>Kill-chain research grouped by phase.</p>
+    </section>
+    {byCat.map((c) => (
+      <section class="section-card" id={c.slug}>
+        <h2><a href={`/redteam/categories/${c.slug}/`}>{c.label}</a></h2>
+        <ul>
+          {c.items.map((p) => (
+            <li>
+              <a href={`/redteam/${p.slug}/`}>{p.data.title}</a>
+              <span class="date"> &mdash; {p.data.date.toISOString().slice(0, 10)}</span>
+              {p.data.draft && <span class="badge draft" style="margin-left:8px">draft</span>}
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+  </div>
+</BaseLayout>

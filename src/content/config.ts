@@ -26,6 +26,16 @@ export const PENTEST_CATEGORIES = {
 
 export type PentestCategorySlug = keyof typeof PENTEST_CATEGORIES;
 
+// Categories for the red-team / cyber kill-chain research track.
+export const REDTEAM_CATEGORIES = {
+  'recon-enum': 'Recon & Enumeration',
+  'persistence': 'Host Persistence',
+  'lateral-movement': 'Lateral Movement',
+  'deserialization': 'Insecure Deserialization',
+} as const;
+
+export type RedteamCategorySlug = keyof typeof REDTEAM_CATEGORIES;
+
 const writeups = defineCollection({
   type: 'content',
   schema: z.object({
@@ -65,4 +75,23 @@ const pentest = defineCollection({
   }),
 });
 
-export const collections = { writeups, pentest };
+const redteam = defineCollection({
+  type: 'content',
+  schema: z.object({
+    title: z.string(),
+    date: z.coerce.date(),
+    category: z.enum(
+      Object.keys(REDTEAM_CATEGORIES) as [
+        RedteamCategorySlug,
+        ...RedteamCategorySlug[]
+      ]
+    ),
+    tags: z.array(z.string()).default([]),
+    difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
+    excerpt: z.string(),
+    cover: z.string().optional(), // path under /redteam/<slug>/
+    draft: z.boolean().default(false),
+  }),
+});
+
+export const collections = { writeups, pentest, redteam };

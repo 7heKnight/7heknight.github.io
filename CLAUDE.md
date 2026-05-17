@@ -8,51 +8,47 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A static personal cybersecurity blog deployed via **GitHub Pages** (repo `7heKnight/7heknight.github.io`, served at the repo root). Hand-authored HTML/CSS/JS — there is **no build step, no framework, no bundler**. Files are served as-is. `package.json` exists only to pull in Playwright for local QA screenshots; the `test` script is a stub and does not run anything.
+A personal cybersecurity blog built with **Astro** and deployed to **GitHub Pages** as a user site (repo `7heKnight/7heknight.github.io`, served at the domain root, so `astro.config.mjs` needs no `base`). Content is authored as Markdown in content collections; Astro builds static HTML into `dist/`. Deployment is via the `.github/workflows/deploy.yml` Actions workflow, which triggers on push to `main` — the GitHub Pages source must be set to "GitHub Actions" (not "Deploy from a branch") or the legacy Jekyll builder runs instead. `public/.nojekyll` keeps Pages from reprocessing the `_astro/` assets.
 
 ## Local development
 
 ```bash
-python3 -m http.server 8765      # serve the site at http://127.0.0.1:8765
-node .playwright-demo.mjs        # QA pass: screenshots + 404/JS-error report (server must be running on :8765)
+npm ci                  # install dependencies
+npm run dev             # local dev server with hot reload
+npm run build           # build static site into dist/ (run this to verify changes)
+npm run preview         # serve the built dist/ locally
 ```
 
-`.playwright-demo.mjs` loads every page (desktop 1366×900 + mobile 390×844), writes screenshots to `.playwright-shots/`, and flags non-200 responses, failed requests, and page JS errors. Run it after any markup/style/path change — it is the closest thing to a test suite. Add new pages to its `pages` array so they get checked. `.playwright-shots/` is throwaway output, not committed source.
+`npm run build` is the closest thing to a test suite — it type-checks content frontmatter against the collection schemas and fails the build on any mismatch. Always run it after changing content or `src/`.
 
-## Page architecture
+## Architecture
 
-Every page is a standalone HTML document that repeats the same skeleton: `<head>` (stylesheet + favicon + `js/script.js`), a `<header>` nav, a `<main>`, and a shared `<footer>` with social icons. There is no templating — **the nav and footer are copy-pasted into every file**, so a nav/footer change must be applied to all HTML files consistently.
+Astro project. Key directories:
 
-Path convention is the load-bearing rule:
-- Root-level pages (`index.html`, `about.html`, `category.html`, `copyright.html`) reference assets with relative paths (`css/...`, `js/...`, `icon/...`).
-- Posts live in `post/` (one level down) and reference assets with `../` prefixes.
+- `src/content/config.ts` — defines the content collections and their Zod schemas. Three collections exist: **`writeups`** (binary-exploitation / CTF), **`pentest`** (Android pentest series), **`redteam`** (cyber kill-chain research). Each has its own `*_CATEGORIES` map; `category` frontmatter must be one of the map keys.
+- `src/content/<collection>/*.md` — the posts, one Markdown file per post with YAML frontmatter matching that collection's schema.
+- `src/layouts/` — `BaseLayout.astro` (shared shell), plus one layout per collection (`WriteupLayout`, `PentestLayout`, `RedteamLayout`).
+- `src/components/` — `Header.astro` / `Footer.astro` (nav is centralized here, not copy-pasted), and one card component per collection.
+- `src/pages/<collection>/` — routes: `index.astro` (listing), `[...slug].astro` (post pages via `getStaticPaths`), `categories/index.astro` + `categories/[category].astro`.
+- `public/` — static assets served as-is. Post images live under `public/<collection>/<slug>/` and are referenced from Markdown as `/<collection>/<slug>/<file>`.
 
-Getting this wrong produces 404s that only the Playwright QA pass will catch.
+The three tracks are structurally parallel: `pentest` and `redteam` were both modeled on the same layout/route pattern. When adding a feature to one track, mirror it across the others for consistency.
 
-### Layout contract (driven by `css/style.css`)
-
-`css/style.css` styles pages by **structural class names**, not per-page CSS. Reusing the right wrapper class is what makes a new page match the site:
-- Home post list: `.main_page_panel` > `article` > `.index_post`.
-- Post / about pages: a three-column `main` of `.left_panel` (table of contents) · `.center_panel` (body) · `.right_panel` (related). `about.html` uses this layout with empty side panels.
-- Category page: `.cat_main` with `.cat_sidebar` + `.cat_content`.
-- Content cards use `.about_card`; in-page nav lists use `.toc_list`; post metadata uses `.post_meta` / `.post_tags` / `.post_body`.
-
-Theme is a fixed dark palette: background `#242424`, accent `#ffcc00`. `css/copyright.css` is scoped to `copyright.html` only.
-
-### `js/script.js`
-
-The only JavaScript. `window.onload` sets the `#title` element in the nav based on `window.location.pathname` (a `titles` map for known root pages; anything under `post` shows "Reading blog"). `show_table_category` / `hide_table_category` are category-table hover helpers. If you add a root page, add it to the `titles` map so the nav title renders.
+Theme is a fixed dark palette: background `#242424`, accent `#ffcc00` (see `src/styles/global.css`).
 
 ## Adding a new post
 
-1. Copy `post/_template.html` into `post/`, rename it to a kebab-case slug (e.g. `my-post.html`), and replace every `[PLACEHOLDER]`. Keep the structure intact so shared styles/nav apply.
-2. Add a card to the home list in `index.html` (`.main_page_panel`).
-3. Add a `<li>` to the matching category section in `category.html` (the `#kill-chain` / `#web-security` / `#network` / `#ctf` sections, and the sidebar `.toc_list`).
-4. Add the new path to the `pages` array in `.playwright-demo.mjs` and run the QA pass.
+1. Pick the collection: `writeups`, `pentest`, or `redteam`.
+2. Create `src/content/<collection>/<kebab-case-slug>.md` with frontmatter matching that collection's schema in `src/content/config.ts`. The `category` value **must** be a key in the collection's `*_CATEGORIES` map — add a new category there first if none fit.
+3. Put any images in `public/<collection>/<slug>/` and reference them as `/<collection>/<slug>/<file>`.
+4. Run `npm run build` — it will fail loudly if the frontmatter does not match the schema. No manual index/nav edits are needed; listing and category pages are generated from the collection.
 
-Existing posts (`post/cyber-kill-chain.html`, `http-methods-web-security.html`, `network-protocols-recon.html`, `ctf-writeup-web-101.html`) are the working examples to follow over the bare template.
+Existing posts are the working examples to follow:
+- `writeups`: `src/content/writeups/linux-bo-foundation.md`
+- `pentest`: `src/content/pentest/android-pentest-overview.md`
+- `redteam`: `src/content/redteam/windows-host-persistence.md`
 
 ## Conventions
 
-- Dates: human text plus a machine `<time datetime="...Z">` attribute — keep both in sync.
-- Content is security-education material; the site explicitly states everything is for educational/authorized testing only (see `about.html` / `copyright.html`) — keep that framing in new posts.
+- Dates: `date:` frontmatter is a real date (`z.coerce.date()`); layouts render it ISO-sliced. Keep dates accurate to the source material.
+- Content is security-education material; every post must keep the educational / authorized-testing-only framing (a blockquote disclaimer near the top is the established pattern) — see existing `redteam` posts.
