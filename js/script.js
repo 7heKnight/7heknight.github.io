@@ -1,15 +1,22 @@
 window.onload = function load_title() {
     let path = window.location.pathname.split("/").pop()
-    if (path === "about.html")
-        document.getElementById("title").innerText="About me";
-    else if (path === "category.html")
-        document.getElementById("title").innerText="Category";
-    else if (path === "index.html")
-        document.getElementById("title").innerText="Home Page";
-    else if (path === "copyright.html")
-        document.getElementById("title").innerText="Copyright Page";
+    let titleEl = document.getElementById("title");
+    if (!titleEl) return;
+
+    let titles = {
+        "about.html": "About me",
+        "category.html": "Category",
+        "index.html": "Home Page",
+        "copyright.html": "Copyright Page",
+        "": "Home Page"
+    };
+
+    if (path in titles)
+        titleEl.innerText = titles[path];
+    else if (path.startsWith("post"))
+        titleEl.innerText = "Reading blog";
     else
-        document.getElementById("title").innerText="Reading blog";
+        titleEl.innerText = "Reading blog";
 }
 
 function show_table_category(){

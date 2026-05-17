@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="description" content="7heKnight's blog">
-    <meta name="keywords" content="7heKnight, 7k, CyberSecurity">
+    <meta name="description" content="Browse 7heKnight's cybersecurity posts by category.">
+    <meta name="keywords" content="7heKnight, 7k, CyberSecurity, Category, CTF, Web Security">
     <meta name="author" content="LyTuanKiet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" href="icon/7k_logo.png">
@@ -19,21 +19,57 @@
         <a href="about.html">About me</a>
         <p id="title"></p>
     </nav>
-    <!--    <p>Hello</p>-->
 </header>
 
-<main>
-    <div class="left_panel">
-        <h3>Table of Content:</h3>
-    </div>
-    <div class="center_panel">
-        <h1 id="post_title">Category</h1>
-        <ul>
-            <li><a href="post/page1/post_test.html">cat 1</a></li>
-            <li>cat 2</li>
+<main class="cat_main">
+    <aside class="cat_sidebar">
+        <h3>Categories:</h3>
+        <ul class="toc_list">
+            <li><a href="#kill-chain">Cyber Kill Chain</a></li>
+            <li><a href="#web-security">Web Security</a></li>
+            <li><a href="#network">Network &amp; Protocol</a></li>
+            <li><a href="#ctf">CTF Writeups</a></li>
         </ul>
-    </div>
-    <div class="right_panel">
+    </aside>
+
+    <div class="cat_content">
+        <h1 id="post_title">Category</h1>
+
+        <section class="about_card" id="kill-chain">
+            <h2>🔗 Cyber Kill Chain</h2>
+            <p>Attack-chain breakdowns, lateral movement and MITRE ATT&amp;CK mapping.</p>
+            <ul class="about_list">
+                <li><a href="post/cyber-kill-chain.html">The Cyber Kill Chain Explained</a>
+                    <time datetime="2026-05-17T00:00:00Z"> — May 17th 2026</time></li>
+            </ul>
+        </section>
+
+        <section class="about_card" id="web-security">
+            <h2>🌐 Web Security</h2>
+            <p>HTTP internals, OWASP Top 10 and common web vulnerabilities.</p>
+            <ul class="about_list">
+                <li><a href="post/http-methods-web-security.html">HTTP Methods &amp; Web Security</a>
+                    <time datetime="2026-05-17T00:00:00Z"> — May 17th 2026</time></li>
+            </ul>
+        </section>
+
+        <section class="about_card" id="network">
+            <h2>📡 Network &amp; Protocol</h2>
+            <p>Protocols, packet analysis and recon techniques.</p>
+            <ul class="about_list">
+                <li><a href="post/network-protocols-recon.html">Network Protocols for Recon</a>
+                    <time datetime="2026-05-17T00:00:00Z"> — May 17th 2026</time></li>
+            </ul>
+        </section>
+
+        <section class="about_card" id="ctf">
+            <h2>🚩 CTF Writeups</h2>
+            <p>Step-by-step challenge solutions and the lessons behind them.</p>
+            <ul class="about_list">
+                <li><a href="post/ctf-writeup-web-101.html">CTF Writeup: Web 101</a>
+                    <time datetime="2026-05-17T00:00:00Z"> — May 17th 2026</time></li>
+            </ul>
+        </section>
     </div>
 </main>
 
@@ -44,7 +80,7 @@
          onclick="window.location.href = 'https://www.linkedin.com/in/7heknight/'">
     <img src="icon/twitter.png" alt="Twitter" onclick="window.location.href = 'https://twitter.com/7heKnight'">
     <img src="icon/facebook.png" alt="Facebook" onclick="window.location.href = 'https://www.facebook.com/7heknight/'">
-    <p><a href="copyright.html">Copyright © 2022</a></p>
+    <p><a href="copyright.html">Copyright © 2026</a></p>
 </footer>
 
 </body>

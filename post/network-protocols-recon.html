@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="The core network protocols every pentester should read fluently during recon.">
+    <meta name="keywords" content="7heKnight, CyberSecurity, Network, Protocol, Recon, Nmap">
+    <meta name="author" content="LyTuanKiet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="icon" href="../icon/7k_logo.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="../js/script.js"></script>
+    <title>Network Protocols for Recon - 7heKnight</title>
+</head>
+<body>
+<header>
+    <nav class="header_list">
+        <a href="../index.html">Home</a>
+        <a href="../category.html">Category</a>
+        <a href="../about.html">About me</a>
+        <p id="title"></p>
+    </nav>
+</header>
+
+<main>
+    <div class="left_panel">
+        <h3>Table of Content:</h3>
+        <ul class="toc_list">
+            <li><a href="#stack">The protocol stack</a></li>
+            <li><a href="#tcpudp">TCP vs UDP</a></li>
+            <li><a href="#scan">Recon in practice</a></li>
+            <li><a href="#read">Reading the traffic</a></li>
+        </ul>
+    </div>
+
+    <div class="center_panel">
+        <h1 id="post_title">Network Protocols for Recon</h1>
+        <p class="post_meta">Published May 17, 2026 · by 7heKnight</p>
+        <div class="post_tags">
+            <a href="../category.html#network">Network &amp; Protocol</a>
+            <a href="../category.html">Recon</a>
+            <a href="../category.html">Nmap</a>
+        </div>
+
+        <div class="post_body">
+            <p>
+                Recon is 80% of an engagement. You can't enumerate what you can't read, so
+                this post is a fast refresher on the protocols that matter and how to pull
+                signal out of them.
+            </p>
+
+            <h2 id="stack">The protocol stack</h2>
+            <p>Bottom-up, the layers you'll touch most:</p>
+            <ul>
+                <li><strong>Link:</strong> Ethernet, ARP (spoofing &amp; MITM).</li>
+                <li><strong>Internet:</strong> IP, ICMP (host discovery).</li>
+                <li><strong>Transport:</strong> TCP, UDP (port scanning).</li>
+                <li><strong>Application:</strong> HTTP, DNS, SMB, SSH, FTP, SNMP.</li>
+            </ul>
+            <img src="../resource/network_protocol.gif" alt="Animated overview of network protocol layers">
+
+            <h2 id="tcpudp">TCP vs UDP</h2>
+            <blockquote>
+                TCP is a phone call (handshake, ordered, reliable). UDP is a postcard
+                (fire-and-forget). Both leak information.
+            </blockquote>
+            <p>
+                The TCP 3-way handshake (<code>SYN</code> → <code>SYN/ACK</code> →
+                <code>ACK</code>) is what makes a <em>SYN scan</em> work: send the SYN,
+                read the reply, never finish — fast and relatively quiet.
+            </p>
+
+            <h2 id="scan">Recon in practice</h2>
+            <pre><code># Host discovery + top ports, service/version detection
+$ nmap -sS -sV -O --top-ports 1000 10.10.10.0/24
+
+# UDP is slow but DNS/SNMP/TFTP hide here
+$ nmap -sU --top-ports 50 10.10.10.5</code></pre>
+            <p>High-value services to flag immediately:</p>
+            <ul>
+                <li><code>21/FTP</code>, <code>22/SSH</code> — anonymous login &amp; weak creds.</li>
+                <li><code>53/DNS</code> — zone transfers (<code>dig AXFR</code>).</li>
+                <li><code>139,445/SMB</code> — null sessions, shares, EternalBlue-era bugs.</li>
+                <li><code>161/SNMP</code> — public community strings dump everything.</li>
+            </ul>
+
+            <h2 id="read">Reading the traffic</h2>
+            <p>
+                When a scan isn't enough, capture and inspect. A Wireshark display filter
+                like <code>tcp.flags.syn == 1 &amp;&amp; tcp.flags.ack == 0</code> isolates
+                connection attempts; <code>http.request</code> surfaces every web call.
+                Learn to read packets and the network stops being a black box.
+            </p>
+            <p>Next: chaining SMB recon into the kill chain's lateral-movement phase.</p>
+        </div>
+    </div>
+
+    <div class="right_panel">
+        <h4>Related Posts</h4>
+        <ul>
+            <li><a href="cyber-kill-chain.html">The Cyber Kill Chain Explained</a></li>
+            <li><a href="http-methods-web-security.html">HTTP Methods &amp; Web Security</a></li>
+            <li><a href="ctf-writeup-web-101.html">CTF Writeup: Web 101</a></li>
+        </ul>
+    </div>
+</main>
+
+<footer>
+    <h1>Contact me</h1>
+    <img src="../icon/github.png" alt="Github" onclick="window.location.href = 'https://github.com/7heKnight'">
+    <img src="../icon/linkedin.png" alt="Linkedin" onclick="window.location.href = 'https://www.linkedin.com/in/7heknight/'">
+    <img src="../icon/twitter.png" alt="Twitter" onclick="window.location.href = 'https://twitter.com/7heKnight'">
+    <img src="../icon/facebook.png" alt="Facebook" onclick="window.location.href = 'https://www.facebook.com/7heknight/'">
+    <p><a href="../copyright.html">Copyright © 2026</a></p>
+</footer>
+
+</body>
+</html>
