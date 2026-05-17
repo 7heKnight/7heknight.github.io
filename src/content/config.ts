@@ -8,6 +8,7 @@ export const CATEGORIES = {
   'stack-canary': 'Stack Canary',
   'windows-exploit': 'Windows Exploitation',
   'shellcode': 'Shellcode',
+  'web-security': 'Web Security',
   'ctf-writeup': 'CTF Writeup',
 } as const;
 
