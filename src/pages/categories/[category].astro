@@ -1,0 +1,42 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import { CATEGORIES } from '../../content/config';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('writeups');
+  return Object.entries(CATEGORIES).map(([slug, label]) => ({
+    params: { category: slug },
+    props: {
+      label,
+      posts: posts
+        .filter((p) => p.data.category === slug)
+        .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf()),
+    },
+  }));
+}
+const { label, posts } = Astro.props;
+---
+<BaseLayout title={`Category: ${label}`}>
+  <div class="container">
+    <section class="hero">
+      <h1>$ grep -r category={label}</h1>
+      <p>{posts.length} writeup{posts.length === 1 ? '' : 's'} in this category.</p>
+    </section>
+    <div class="card-grid">
+      {posts.map((p) => (
+        <PostCard
+          slug={p.slug}
+          title={p.data.title}
+          excerpt={p.data.excerpt}
+          date={p.data.date}
+          category={p.data.category}
+          difficulty={p.data.difficulty}
+          cover={p.data.cover}
+          draft={p.data.draft}
+        />
+      ))}
+    </div>
+  </div>
+</BaseLayout>

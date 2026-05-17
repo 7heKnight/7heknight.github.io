@@ -1,0 +1,33 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from '../components/PostCard.astro';
+
+const posts = (await getCollection('writeups'))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+---
+<BaseLayout title="7heKnight">
+  <div class="container">
+    <section class="hero">
+      <h1>$ ./writeups --all</h1>
+      <p>
+        Binary exploitation, exploit development and CTF writeups —
+        stack smashing, DEP/NX &amp; ASLR bypasses, ret2libc, shellcode and more.
+      </p>
+    </section>
+    <div class="card-grid">
+      {posts.map((p) => (
+        <PostCard
+          slug={p.slug}
+          title={p.data.title}
+          excerpt={p.data.excerpt}
+          date={p.data.date}
+          category={p.data.category}
+          difficulty={p.data.difficulty}
+          cover={p.data.cover}
+          draft={p.data.draft}
+        />
+      ))}
+    </div>
+  </div>
+</BaseLayout>

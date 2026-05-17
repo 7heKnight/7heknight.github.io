@@ -1,0 +1,27 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const posts = await getCollection('writeups');
+const counts = new Map<string, number>();
+for (const p of posts) {
+  for (const t of p.data.tags) {
+    const k = t.toLowerCase();
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+}
+const tags = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+---
+<BaseLayout title="Tags">
+  <div class="container">
+    <section class="hero">
+      <h1>$ tags --count</h1>
+      <p>Filter writeups by source, difficulty and technique.</p>
+    </section>
+    <div class="taxo-bar">
+      {tags.map(([t, n]) => (
+        <a class="tag" href={`/tags/${t}/`}>#{t} <span style="opacity:.6">({n})</span></a>
+      ))}
+    </div>
+  </div>
+</BaseLayout>

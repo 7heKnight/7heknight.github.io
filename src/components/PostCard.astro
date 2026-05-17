@@ -1,0 +1,33 @@
+---
+import { CATEGORIES } from '../content/config';
+interface Props {
+  slug: string;
+  title: string;
+  excerpt: string;
+  date: Date;
+  category: keyof typeof CATEGORIES;
+  difficulty: string;
+  cover?: string;
+  draft?: boolean;
+}
+const { slug, title, excerpt, date, category, difficulty, cover, draft } = Astro.props;
+const href = `/writeups/${slug}/`;
+const dateStr = date.toISOString().slice(0, 10);
+---
+<article class="card">
+  <a href={href}>
+    {cover
+      ? <div class="card-thumb"><img src={cover} alt={title} loading="lazy" /></div>
+      : <div class="card-noimg">&gt;_</div>}
+  </a>
+  <div class="card-body">
+    <div class="card-meta">
+      <span class="card-cat">{CATEGORIES[category]}</span>
+      <span class={`badge ${difficulty}`}>{difficulty}</span>
+      {draft && <span class="badge draft">draft</span>}
+    </div>
+    <a href={href}><h3>{title}</h3></a>
+    <p>{excerpt}</p>
+    <span class="date">{dateStr}</span>
+  </div>
+</article>

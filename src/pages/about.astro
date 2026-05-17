@@ -1,0 +1,53 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="About">
+  <div class="container">
+    <section class="hero"><h1>$ whoami</h1></section>
+
+    <section class="about-card">
+      <h2>👋 Hi, I'm 7heKnight</h2>
+      <p>
+        I'm <strong>[Your full name]</strong>, a security enthusiast based in
+        <strong>[your city / country]</strong>, working as a
+        <strong>[your role — e.g. Penetration Tester / Exploit Developer]</strong>.
+        This blog is my notebook for binary exploitation and CTF — I break
+        things to understand them, then write the process down.
+      </p>
+    </section>
+
+    <section class="about-card">
+      <h2>🎯 Focus</h2>
+      <ul>
+        <li><strong>Binary exploitation</strong> — stack smashing, ret2libc, ROP.</li>
+        <li><strong>Mitigation bypass</strong> — DEP/NX, ASLR, stack canaries.</li>
+        <li><strong>Shellcoding</strong> — x86/x64 Linux, Windows.</li>
+        <li><strong>CTF</strong> — pwnable.kr and similar pwn challenges.</li>
+        <li><strong>[Adjust this list to match what you actually do]</strong></li>
+      </ul>
+    </section>
+
+    <section class="about-card">
+      <h2>🛠️ Toolbox</h2>
+      <ul>
+        <li><strong>Debugging:</strong> [GDB + peda/pwndbg, Immunity Debugger, ...]</li>
+        <li><strong>Exploitation:</strong> [pwntools, ROPgadget, msfvenom, ...]</li>
+        <li><strong>Languages:</strong> [Python, C, x86/x64 assembly, ...]</li>
+        <li><strong>Certifications:</strong> [OSCP / OSED / "studying for ..." — or remove]</li>
+      </ul>
+    </section>
+
+    <section class="about-card">
+      <h2>📫 Get in touch</h2>
+      <p>
+        Found a mistake in a writeup or want to collaborate? Reach me at
+        <a href="mailto:7h3knight@gmail.com">7h3knight@gmail.com</a> or via the
+        links in the footer.
+      </p>
+      <p style="color:var(--muted);font-size:.9rem">
+        ⚠️ Everything here is for educational and authorized testing only.
+        See the <a href="/copyright/">copyright &amp; usage policy</a>.
+      </p>
+    </section>
+  </div>
+</BaseLayout>

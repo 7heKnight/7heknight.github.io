@@ -1,0 +1,26 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+const year = new Date().getFullYear();
+---
+<BaseLayout title="Copyright">
+  <div class="container">
+    <section class="hero"><h1>$ cat LICENSE</h1></section>
+    <section class="about-card">
+      <h2>Copyright &amp; Usage Policy</h2>
+      <p>
+        All articles and original content on this site are
+        &copy; {year} <strong>Ly Tuan Kiet (7heKnight)</strong>.
+      </p>
+      <ul>
+        <li>You may reference and link to articles <strong>with attribution</strong>.</li>
+        <li>Do not copy content without citing the source.</li>
+        <li>Reproducing more than 50% of an article requires the author's permission.</li>
+        <li>All exploitation content is for <strong>educational and authorized testing only</strong>.</li>
+      </ul>
+      <p>
+        Questions or permission requests:
+        <a href="mailto:7h3knight@gmail.com">7h3knight@gmail.com</a>.
+      </p>
+    </section>
+  </div>
+</BaseLayout>

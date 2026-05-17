@@ -1,0 +1,47 @@
+---
+import { getCollection } from 'astro:content';
+import WriteupLayout from '../../layouts/WriteupLayout.astro';
+
+export async function getStaticPaths() {
+  const posts = (await getCollection('writeups'))
+    .sort((a, b) => a.data.date.valueOf() - b.data.date.valueOf());
+
+  return posts.map((post, i) => {
+    const prev = posts[i - 1] ?? null;
+    const next = posts[i + 1] ?? null;
+    const related = posts
+      .filter((p) => p.slug !== post.slug && p.data.category === post.data.category)
+      .slice(0, 4)
+      .map((p) => ({ slug: p.slug, title: p.data.title }));
+    return {
+      params: { slug: post.slug },
+      props: {
+        post,
+        prev: prev && { slug: prev.slug, title: prev.data.title },
+        next: next && { slug: next.slug, title: next.data.title },
+        related,
+      },
+    };
+  });
+}
+
+const { post, prev, next, related } = Astro.props;
+const { Content, headings } = await post.render();
+const d = post.data;
+---
+<WriteupLayout
+  title={d.title}
+  date={d.date}
+  category={d.category}
+  tags={d.tags}
+  difficulty={d.difficulty}
+  source={d.source}
+  excerpt={d.excerpt}
+  draft={d.draft}
+  headings={headings}
+  prev={prev}
+  next={next}
+  related={related}
+>
+  <Content />
+</WriteupLayout>

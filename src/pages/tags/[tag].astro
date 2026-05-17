@@ -1,0 +1,44 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('writeups');
+  const tags = new Set<string>();
+  for (const p of posts) for (const t of p.data.tags) tags.add(t.toLowerCase());
+
+  return [...tags].map((tag) => ({
+    params: { tag },
+    props: {
+      tag,
+      posts: posts
+        .filter((p) => p.data.tags.some((t) => t.toLowerCase() === tag))
+        .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf()),
+    },
+  }));
+}
+const { tag, posts } = Astro.props;
+---
+<BaseLayout title={`Tag: #${tag}`}>
+  <div class="container">
+    <section class="hero">
+      <h1>$ filter --tag {tag}</h1>
+      <p>{posts.length} writeup{posts.length === 1 ? '' : 's'} tagged <code>#{tag}</code>.</p>
+    </section>
+    <div class="card-grid">
+      {posts.map((p) => (
+        <PostCard
+          slug={p.slug}
+          title={p.data.title}
+          excerpt={p.data.excerpt}
+          date={p.data.date}
+          category={p.data.category}
+          difficulty={p.data.difficulty}
+          cover={p.data.cover}
+          draft={p.data.draft}
+        />
+      ))}
+    </div>
+  </div>
+</BaseLayout>
