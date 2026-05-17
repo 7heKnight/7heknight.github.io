@@ -2,41 +2,51 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
+import PentestCard from '../../components/PentestCard.astro';
 
 export async function getStaticPaths() {
-  const posts = await getCollection('writeups');
+  const writeups = await getCollection('writeups');
+  const pentest = await getCollection('pentest');
   const tags = new Set<string>();
-  for (const p of posts) for (const t of p.data.tags) tags.add(t.toLowerCase());
+  for (const p of [...writeups, ...pentest])
+    for (const t of p.data.tags) tags.add(t.toLowerCase());
 
   return [...tags].map((tag) => ({
     params: { tag },
     props: {
       tag,
-      posts: posts
+      writeups: writeups
         .filter((p) => p.data.tags.some((t) => t.toLowerCase() === tag))
         .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf()),
+      pentest: pentest
+        .filter((p) => p.data.tags.some((t) => t.toLowerCase() === tag))
+        .sort((a, b) => (a.data.seriesOrder ?? 99) - (b.data.seriesOrder ?? 99)),
     },
   }));
 }
-const { tag, posts } = Astro.props;
+const { tag, writeups, pentest } = Astro.props;
+const total = writeups.length + pentest.length;
 ---
 <BaseLayout title={`Tag: #${tag}`}>
   <div class="container">
     <section class="hero">
       <h1>$ filter --tag {tag}</h1>
-      <p>{posts.length} writeup{posts.length === 1 ? '' : 's'} tagged <code>#{tag}</code>.</p>
+      <p>{total} post{total === 1 ? '' : 's'} tagged <code>#{tag}</code>.</p>
     </section>
     <div class="card-grid">
-      {posts.map((p) => (
+      {writeups.map((p) => (
         <PostCard
-          slug={p.slug}
-          title={p.data.title}
-          excerpt={p.data.excerpt}
-          date={p.data.date}
-          category={p.data.category}
-          difficulty={p.data.difficulty}
-          cover={p.data.cover}
-          draft={p.data.draft}
+          slug={p.slug} title={p.data.title} excerpt={p.data.excerpt}
+          date={p.data.date} category={p.data.category}
+          difficulty={p.data.difficulty} cover={p.data.cover} draft={p.data.draft}
+        />
+      ))}
+      {pentest.map((p) => (
+        <PentestCard
+          slug={p.slug} title={p.data.title} excerpt={p.data.excerpt}
+          date={p.data.date} category={p.data.category}
+          difficulty={p.data.difficulty} platform={p.data.platform}
+          seriesOrder={p.data.seriesOrder} draft={p.data.draft}
         />
       ))}
     </div>

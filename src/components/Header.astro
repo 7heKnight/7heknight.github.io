@@ -7,8 +7,9 @@ const isActive = (p: string) =>
   <div class="container">
     <a href="/" class="brand"><span class="prompt">7he</span>Knight<span class="prompt">$</span></a>
     <nav class="nav-links">
-      <a href="/" aria-current={isActive('/') && pathname === '/' ? 'page' : undefined}>Home</a>
-      <a href="/categories/" aria-current={isActive('/categories') ? 'page' : undefined}>Categories</a>
+      <a href="/" aria-current={pathname === '/' ? 'page' : undefined}>Home</a>
+      <a href="/writeups/" aria-current={isActive('/writeups') || isActive('/categories') ? 'page' : undefined}>Writeups</a>
+      <a href="/pentest/" aria-current={isActive('/pentest') ? 'page' : undefined}>Pentest</a>
       <a href="/tags/" aria-current={isActive('/tags') ? 'page' : undefined}>Tags</a>
       <a href="/about/" aria-current={isActive('/about') ? 'page' : undefined}>About</a>
     </nav>

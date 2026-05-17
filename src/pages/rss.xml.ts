@@ -3,18 +3,26 @@ import { getCollection } from 'astro:content';
 import type { APIContext } from 'astro';
 
 export async function GET(context: APIContext) {
-  const posts = await getCollection('writeups');
+  const writeups = (await getCollection('writeups')).map((p) => ({
+    title: p.data.title,
+    description: p.data.excerpt,
+    pubDate: p.data.date,
+    link: `/writeups/${p.slug}/`,
+  }));
+  const pentest = (await getCollection('pentest')).map((p) => ({
+    title: p.data.title,
+    description: p.data.excerpt,
+    pubDate: p.data.date,
+    link: `/pentest/${p.slug}/`,
+  }));
+
   return rss({
-    title: '7heKnight — Exploit Dev & CTF Writeups',
-    description: 'Binary exploitation, exploit development and CTF writeups.',
+    title: '7heKnight — Offensive Security',
+    description:
+      'Binary exploitation, exploit development and mobile pentest writeups.',
     site: context.site!,
-    items: posts
-      .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
-      .map((p) => ({
-        title: p.data.title,
-        description: p.data.excerpt,
-        pubDate: p.data.date,
-        link: `/writeups/${p.slug}/`,
-      })),
+    items: [...writeups, ...pentest].sort(
+      (a, b) => b.pubDate.valueOf() - a.pubDate.valueOf()
+    ),
   });
 }

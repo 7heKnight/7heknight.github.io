@@ -2,30 +2,58 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
+import PentestCard from '../components/PentestCard.astro';
 
-const posts = (await getCollection('writeups'))
-  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+const writeups = (await getCollection('writeups'))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+  .slice(0, 3);
+const pentest = (await getCollection('pentest'))
+  .sort((a, b) => (a.data.seriesOrder ?? 99) - (b.data.seriesOrder ?? 99))
+  .slice(0, 3);
 ---
 <BaseLayout title="7heKnight">
   <div class="container">
     <section class="hero">
-      <h1>$ ./writeups --all</h1>
+      <h1>7heKnight<span style="color:var(--muted)">$</span></h1>
       <p>
-        Binary exploitation, exploit development and CTF writeups —
-        stack smashing, DEP/NX &amp; ASLR bypasses, ret2libc, shellcode and more.
+        Offensive security notes — binary exploitation, exploit development,
+        and mobile pentesting. Two tracks, written as practical runbooks.
+      </p>
+    </section>
+
+    <section style="margin-bottom:8px">
+      <h2 style="color:var(--accent);font-family:var(--mono);font-size:1.3rem;margin-bottom:4px">
+        <a href="/writeups/">Binary Exploitation &amp; CTF &rarr;</a>
+      </h2>
+      <p style="color:var(--muted);margin-bottom:16px">
+        Stack smashing, DEP/NX &amp; ASLR bypass, ret2libc, shellcode, CTF writeups.
       </p>
     </section>
     <div class="card-grid">
-      {posts.map((p) => (
+      {writeups.map((p) => (
         <PostCard
-          slug={p.slug}
-          title={p.data.title}
-          excerpt={p.data.excerpt}
-          date={p.data.date}
-          category={p.data.category}
-          difficulty={p.data.difficulty}
-          cover={p.data.cover}
-          draft={p.data.draft}
+          slug={p.slug} title={p.data.title} excerpt={p.data.excerpt}
+          date={p.data.date} category={p.data.category}
+          difficulty={p.data.difficulty} cover={p.data.cover} draft={p.data.draft}
+        />
+      ))}
+    </div>
+
+    <section style="margin-bottom:8px">
+      <h2 style="color:var(--accent);font-family:var(--mono);font-size:1.3rem;margin-bottom:4px">
+        <a href="/pentest/">Mobile Pentest &rarr;</a>
+      </h2>
+      <p style="color:var(--muted);margin-bottom:16px">
+        Android HTTPS interception: cert injection, root &amp; SSL pinning bypass, Frida tooling.
+      </p>
+    </section>
+    <div class="card-grid">
+      {pentest.map((p) => (
+        <PentestCard
+          slug={p.slug} title={p.data.title} excerpt={p.data.excerpt}
+          date={p.data.date} category={p.data.category}
+          difficulty={p.data.difficulty} platform={p.data.platform}
+          seriesOrder={p.data.seriesOrder} draft={p.data.draft}
         />
       ))}
     </div>
