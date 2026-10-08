@@ -49,6 +49,7 @@ const writeups = defineCollection({
     source: z.string(), // e.g. "INE", "pwnable.kr"
     excerpt: z.string(),
     cover: z.string().optional(), // path under /writeups/<slug>/
+    updated: z.coerce.date().optional(), // set when a post is materially revised (feeds dateModified / sitemap lastmod)
     draft: z.boolean().default(false),
   }),
 });
@@ -71,6 +72,7 @@ const pentest = defineCollection({
     // Optional series grouping so multi-part runbooks link together.
     series: z.string().optional(),
     seriesOrder: z.number().optional(),
+    updated: z.coerce.date().optional(), // set when a post is materially revised (feeds dateModified / sitemap lastmod)
     draft: z.boolean().default(false),
   }),
 });
@@ -90,6 +92,7 @@ const redteam = defineCollection({
     difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
     excerpt: z.string(),
     cover: z.string().optional(), // path under /redteam/<slug>/
+    updated: z.coerce.date().optional(), // set when a post is materially revised (feeds dateModified / sitemap lastmod)
     draft: z.boolean().default(false),
   }),
 });

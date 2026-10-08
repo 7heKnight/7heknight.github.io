@@ -136,8 +136,10 @@ article.post .body h3 { font-size: 1.1rem; color: var(--text); margin: 22px 0 10
 article.post .body p { margin-bottom: 15px; }
 article.post .body ul, article.post .body ol { margin: 0 0 15px 26px; }
 article.post .body li { margin-bottom: 6px; }
+article.post .body a, article.post .body :not(pre) > code { overflow-wrap: anywhere; } /* long URLs / identifiers must not widen the page */
 article.post .body a { text-decoration: underline; }
 article.post .body img { max-width: 100%; height: auto; display: block; margin: 18px auto; border: 1px solid var(--border); border-radius: 4px; }
+article.post .body table { display: block; max-width: 100%; overflow-x: auto; margin-bottom: 15px; } /* wide tables scroll instead of widening the page */
 article.post .body :not(pre) > code {
   background: var(--code-bg); color: #7fdbca; font-family: var(--mono);
   font-size: .88em; padding: 2px 6px; border-radius: 4px;
@@ -186,7 +188,7 @@ article.post .body blockquote p:last-child { margin-bottom: 0; }
 
 /* ---- Responsive ---- */
 @media (max-width: 1000px) {
-  .writeup { grid-template-columns: 1fr; }
+  .writeup { grid-template-columns: minmax(0, 1fr); }
   .writeup .toc, .writeup .meta-side { position: static; max-height: none; }
   .writeup .toc { order: 2; }
   .writeup article { order: 1; }
@@ -194,8 +196,14 @@ article.post .body blockquote p:last-child { margin-bottom: 0; }
 }
 @media (max-width: 640px) {
   .site-header .container { height: auto; padding: 12px 16px; flex-direction: column; gap: 8px; }
+  .nav-links { flex-wrap: wrap; justify-content: center; }
   .nav-links a { padding: 6px 12px; font-size: .9rem; }
   .container { padding: 0 16px; }
   .hero h1 { font-size: 1.5rem; }
   .card-grid { grid-template-columns: 1fr; }
 }
+
+/* ---- Breadcrumbs ---- */
+.breadcrumbs ol { list-style: none; display: flex; gap: 8px; font-family: var(--mono); font-size: .78rem; color: var(--muted); margin-bottom: 14px; }
+.breadcrumbs li + li::before { content: "\203A"; margin-right: 8px; }
+.breadcrumbs li:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

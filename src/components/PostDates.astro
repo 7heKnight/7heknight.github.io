@@ -1,0 +1,10 @@
+---
+// "2022-03-14 · by Ly Tuan Kiet [· updated 2026-01-02]" with machine-readable dates.
+import { AUTHOR } from '../lib/seo';
+
+interface Props { date: Date; updated?: Date; }
+const { date, updated } = Astro.props;
+const day = (d: Date) => d.toISOString().slice(0, 10);
+const showUpdated = updated && day(updated) !== day(date);
+---
+<time datetime={day(date)}>{day(date)}</time> &middot; by <a rel="author" href="/about/">{AUTHOR.name}</a>{showUpdated && <> &middot; updated <time datetime={day(updated)}>{day(updated)}</time></>}

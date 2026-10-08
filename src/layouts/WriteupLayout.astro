@@ -1,11 +1,16 @@
 ---
 import BaseLayout from './BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import PostDates from '../components/PostDates.astro';
+import { postCrumbs } from '../lib/posts';
 import { CATEGORIES } from '../content/config';
 import type { MarkdownHeading } from 'astro';
 
 interface Props {
   title: string;
   date: Date;
+  updated?: Date;
+  cover?: string;
   category: keyof typeof CATEGORIES;
   tags: string[];
   difficulty: string;
@@ -18,13 +23,18 @@ interface Props {
   related?: { slug: string; title: string }[];
 }
 const {
-  title, date, category, tags, difficulty, source, excerpt, draft,
+  title, date, updated, cover, category, tags, difficulty, source, excerpt, draft,
   headings, prev, next, related = [],
 } = Astro.props;
 const toc = headings.filter((h) => h.depth === 2 || h.depth === 1);
-const dateStr = date.toISOString().slice(0, 10);
 ---
-<BaseLayout title={title} description={excerpt}>
+<BaseLayout
+  title={title}
+  description={excerpt}
+  image={cover}
+  noindex={draft}
+  article={{ published: date, modified: updated ?? date, tags, section: CATEGORIES[category] }}
+>
   <div class="container">
     <div class="writeup">
       <aside class="toc">
@@ -39,8 +49,9 @@ const dateStr = date.toISOString().slice(0, 10);
       </aside>
 
       <article class="post">
+        <Breadcrumbs crumbs={postCrumbs('writeups', title)} />
         <h1>{title}</h1>
-        <p class="post-meta">{dateStr} &middot; {source} &middot; <span class={`badge ${difficulty}`}>{difficulty}</span></p>
+        <p class="post-meta"><PostDates date={date} updated={updated} /> &middot; {source} &middot; <span class={`badge ${difficulty}`}>{difficulty}</span></p>
         {draft && <p class="post-meta"><span class="badge draft">draft / incomplete</span></p>}
         <div class="post-tags">
           {tags.map((t) => <a class="tag" href={`/tags/${t.toLowerCase()}/`}>#{t}</a>)}

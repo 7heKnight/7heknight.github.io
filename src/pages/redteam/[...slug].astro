@@ -1,28 +1,34 @@
 ---
-import { getCollection } from 'astro:content';
 import RedteamLayout from '../../layouts/RedteamLayout.astro';
+import { getAllPosts, relatedPosts } from '../../lib/posts';
 
 export async function getStaticPaths() {
-  const posts = await getCollection('redteam');
-  return posts.map((post) => ({
-    params: { slug: post.slug },
-    props: { post },
+  const posts = (await getAllPosts()).filter((p) => p.section === 'redteam');
+  return posts.map((p) => ({
+    params: { slug: p.slug },
+    props: {
+      post: p.entry,
+      related: relatedPosts(p, posts).map((r) => ({ slug: r.slug, title: r.title })),
+    },
   }));
 }
 
-const { post } = Astro.props;
+const { post, related } = Astro.props;
 const { Content, headings } = await post.render();
 const d = post.data;
 ---
 <RedteamLayout
   title={d.title}
   date={d.date}
+  updated={d.updated}
+  cover={d.cover}
   category={d.category}
   tags={d.tags}
   difficulty={d.difficulty}
   excerpt={d.excerpt}
   draft={d.draft}
   headings={headings}
+  related={related}
 >
   <Content />
 </RedteamLayout>

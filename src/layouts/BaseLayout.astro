@@ -2,21 +2,37 @@
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import '../styles/global.css';
+import {
+  SITE, pageTitle, metaDescription, jsonLdString, websiteLd, articleLd,
+  type ArticleMeta,
+} from '../lib/seo';
 
 interface Props {
   title: string;
   description?: string;
   image?: string;
+  article?: ArticleMeta; // set on post pages: og:type=article + BlogPosting JSON-LD
+  noindex?: boolean; // thin archives, drafts, 404
 }
 const {
   title,
-  description = "7heKnight — binary exploitation, exploit development and CTF writeups.",
-  image = '/og-default.png',
+  description = SITE.description,
+  image = SITE.ogImage,
+  article,
+  noindex = false,
 } = Astro.props;
-const canonical = new URL(Astro.url.pathname, Astro.site);
-const fullTitle = title === '7heKnight'
-  ? '7heKnight — Exploit Dev & CTF Writeups'
-  : `${title} — 7heKnight`;
+const site = Astro.site!;
+const canonical = new URL(Astro.url.pathname, site);
+const isHome = Astro.url.pathname === '/';
+const fullTitle = isHome ? SITE.homeTitle : pageTitle(title);
+const desc = metaDescription(description);
+const ogImage = new URL(image, site);
+const graph = [
+  ...(isHome ? websiteLd(site) : []),
+  ...(article
+    ? [articleLd({ ...article, title, description: desc, url: canonical, image: ogImage })]
+    : []),
+];
 ---
 <!DOCTYPE html>
 <html lang="en">
@@ -24,20 +40,29 @@ const fullTitle = title === '7heKnight'
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{fullTitle}</title>
-  <meta name="description" content={description} />
+  <meta name="description" content={desc} />
   <meta name="author" content="Ly Tuan Kiet" />
+  {noindex && <meta name="robots" content="noindex,follow" />}
   <link rel="canonical" href={canonical} />
   <link rel="icon" href="/favicon.png" />
   <link rel="sitemap" href="/sitemap-index.xml" />
   <link rel="alternate" type="application/rss+xml" title="7heKnight" href="/rss.xml" />
   <!-- Open Graph -->
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content={fullTitle} />
-  <meta property="og:description" content={description} />
+  <meta property="og:site_name" content={SITE.name} />
+  <meta property="og:type" content={article ? 'article' : 'website'} />
+  <meta property="og:title" content={isHome ? SITE.homeTitle : title} />
+  <meta property="og:description" content={desc} />
   <meta property="og:url" content={canonical} />
-  <meta property="og:image" content={new URL(image, Astro.site)} />
+  <meta property="og:image" content={ogImage} />
+  {image === SITE.ogImage && <meta property="og:image:width" content="1200" />}
+  {image === SITE.ogImage && <meta property="og:image:height" content="630" />}
+  {article && <meta property="article:published_time" content={article.published.toISOString()} />}
+  {article && <meta property="article:modified_time" content={article.modified.toISOString()} />}
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:creator" content="@7heKnight" />
+  <meta name="twitter:creator" content={SITE.twitter} />
+  {graph.length > 0 && (
+    <script type="application/ld+json" set:html={jsonLdString({ '@context': 'https://schema.org', '@graph': graph })} />
+  )}
 </head>
 <body>
   <Header />

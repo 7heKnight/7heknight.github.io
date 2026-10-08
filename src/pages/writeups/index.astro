@@ -6,7 +6,10 @@ import PostCard from '../../components/PostCard.astro';
 const posts = (await getCollection('writeups'))
   .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 ---
-<BaseLayout title="Binary Exploitation Writeups">
+<BaseLayout
+  title="Binary Exploitation Writeups"
+  description="Binary exploitation and CTF writeups: stack overflows, NX/DEP and ASLR bypass, ret2libc, stack canaries, shellcode, plus web-security CVE analyses."
+>
   <div class="container">
     <section class="hero">
       <h1>$ ./writeups --all</h1>

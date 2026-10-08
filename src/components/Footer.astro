@@ -1,13 +1,11 @@
 ---
+import { SOCIAL_LINKS } from '../lib/seo';
 const year = new Date().getFullYear();
 ---
 <footer class="site-footer">
   <h2>Contact me</h2>
   <div class="socials">
-    <a href="https://github.com/7heKnight" target="_blank" rel="noopener">GitHub</a>
-    <a href="https://www.linkedin.com/in/7heknight/" target="_blank" rel="noopener">LinkedIn</a>
-    <a href="https://twitter.com/7heKnight" target="_blank" rel="noopener">Twitter</a>
-    <a href="https://www.facebook.com/7heknight/" target="_blank" rel="noopener">Facebook</a>
+    {SOCIAL_LINKS.map((l) => <a href={l.href} target="_blank" rel="noopener">{l.label}</a>)}
   </div>
   <p class="copy">
     <a href="/copyright/">Copyright &copy; {year} 7heknight</a>

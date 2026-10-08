@@ -1,25 +1,19 @@
 ---
-import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getAllPosts, groupByTag } from '../../lib/posts';
 
-const all = [
-  ...(await getCollection('writeups')),
-  ...(await getCollection('pentest')),
-];
-const counts = new Map<string, number>();
-for (const p of all) {
-  for (const t of p.data.tags) {
-    const k = t.toLowerCase();
-    counts.set(k, (counts.get(k) ?? 0) + 1);
-  }
-}
-const tags = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+const tags = [...groupByTag(await getAllPosts())]
+  .map(([tag, posts]) => [tag, posts.length] as const)
+  .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 ---
-<BaseLayout title="Tags">
+<BaseLayout
+  title="Tags"
+  description="Browse 7heKnight posts by tag across binary exploitation, Android pentest and red team: techniques, tools, CVE identifiers and difficulty."
+>
   <div class="container">
     <section class="hero">
       <h1>$ tags --count</h1>
-      <p>Filter across both tracks by source, difficulty and technique.</p>
+      <p>Filter across all three tracks by source, difficulty, tool and technique.</p>
     </section>
     <div class="taxo-bar">
       {tags.map(([t, n]) => (

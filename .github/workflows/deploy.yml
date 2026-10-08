@@ -49,3 +49,24 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  # Best-effort: tell IndexNow search engines (Bing, Yandex, ...) about changed
+  # posts. A failure here must never affect the deployment above.
+  indexnow:
+    needs: deploy
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Submit changed URLs
+        run: node scripts/indexnow.mjs --base "${{ github.event.before }}" --head "${{ github.sha }}"

@@ -30,6 +30,8 @@ Astro project. Key directories:
 - `src/layouts/` — `BaseLayout.astro` (shared shell), plus one layout per collection (`WriteupLayout`, `PentestLayout`, `RedteamLayout`).
 - `src/components/` — `Header.astro` / `Footer.astro` (nav is centralized here, not copy-pasted), and one card component per collection.
 - `src/pages/<collection>/` — routes: `index.astro` (listing), `[...slug].astro` (post pages via `getStaticPaths`), `categories/index.astro` + `categories/[category].astro`.
+- `src/lib/seo.ts` — site-wide SEO constants (name, author, socials, `MIN_INDEXABLE_POSTS`) plus pure helpers for titles, descriptions and JSON-LD. `src/lib/posts.ts` — one typed view over the three collections (`SECTIONS`, `getAllPosts`, tag grouping, related posts); sitemap, RSS and tag pages are built from it.
+- `src/plugins/rehype-image-seo.mjs` — Markdown image pass (alt text, lazy-loading, width/height); `scripts/indexnow.mjs` — post-deploy search-engine notification (run by `deploy.yml`).
 - `public/` — static assets served as-is. Post images live under `public/<collection>/<slug>/` and are referenced from Markdown as `/<collection>/<slug>/<file>`.
 
 The three tracks are structurally parallel: `pentest` and `redteam` were both modeled on the same layout/route pattern. When adding a feature to one track, mirror it across the others for consistency.
@@ -47,6 +49,18 @@ Existing posts are the working examples to follow:
 - `writeups`: `src/content/writeups/linux-bo-foundation.md`
 - `pentest`: `src/content/pentest/android-pentest-overview.md`
 - `redteam`: `src/content/redteam/windows-host-persistence.md`
+
+## SEO
+
+SEO is handled in code, with no dependency on any webmaster console. All of it derives from frontmatter, so a new post needs nothing extra.
+
+- **Head metadata** is built once in `BaseLayout.astro`: title (brand suffix dropped when it would exceed ~60 chars), description (`excerpt` trimmed to ~160 chars at a sentence boundary), canonical, Open Graph, `og:type=article` + dates on posts. Posts also get `BlogPosting` + `BreadcrumbList` JSON-LD; the home page gets `WebSite` + `Person`.
+- **Dates:** `date` is first publication. Set the optional `updated` frontmatter when a post is materially revised; it drives `dateModified`, the sitemap `lastmod`, and the visible "updated" stamp. Never bump it for typo fixes.
+- **Thin archives:** tag/category pages listing fewer than `MIN_INDEXABLE_POSTS` (2) posts are `noindex,follow` and left out of the sitemap. `draft: true` posts are `noindex` and excluded from sitemap/RSS.
+- **Images:** write real alt text in Markdown; filename-style alt (`![image1.png](...)`) is replaced by the post title + nearest heading. The build fails if a `/path` image is missing from `public/`.
+- **Sitemap / robots / RSS:** `sitemap-index.xml` (keep the URL; it is referenced from `robots.txt`), `robots.txt` and `rss.xml` are generated from the collections. Adding a content track means adding it to `SECTIONS` in `src/lib/posts.ts` and to `SECTIONS` in `scripts/indexnow.mjs`.
+- **IndexNow:** `public/<key>.txt` is the protocol's ownership proof and is public by design. After each deploy the `indexnow` job submits only the posts changed in that push (Bing, Yandex, Naver, Seznam; not Google). Keep post file names kebab-case so the URL derived from the path matches the slug.
+- **Mobile:** Google indexes the mobile view. The mobile grid column is `minmax(0, 1fr)` and wide tables / long URLs are contained; check there is no horizontal scroll at 390px after layout or CSS changes.
 
 ## Conventions
 

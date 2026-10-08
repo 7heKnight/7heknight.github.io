@@ -1,0 +1,17 @@
+---
+// Visible breadcrumb trail plus matching BreadcrumbList JSON-LD (one source,
+// so markup and visible content can never drift apart).
+import { breadcrumbLd, jsonLdString, type Crumb } from '../lib/seo';
+
+interface Props { crumbs: Crumb[]; }
+const { crumbs } = Astro.props;
+const ld = { '@context': 'https://schema.org', ...breadcrumbLd(crumbs, Astro.site!) };
+---
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <ol>
+    {crumbs.map((c) => (
+      <li>{c.href ? <a href={c.href}>{c.name}</a> : <span aria-current="page">{c.name}</span>}</li>
+    ))}
+  </ol>
+</nav>
+<script type="application/ld+json" set:html={jsonLdString(ld)} />

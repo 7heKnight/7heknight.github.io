@@ -1,24 +1,37 @@
 ---
 import BaseLayout from './BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import PostDates from '../components/PostDates.astro';
+import { postCrumbs } from '../lib/posts';
 import { REDTEAM_CATEGORIES } from '../content/config';
 import type { MarkdownHeading } from 'astro';
 
 interface Props {
   title: string;
   date: Date;
+  updated?: Date;
+  cover?: string;
   category: keyof typeof REDTEAM_CATEGORIES;
   tags: string[];
   difficulty: string;
   excerpt: string;
   draft: boolean;
   headings: MarkdownHeading[];
+  related?: { slug: string; title: string }[];
 }
-const { title, date, category, tags, difficulty, excerpt, draft, headings } =
-  Astro.props;
+const {
+  title, date, updated, cover, category, tags, difficulty, excerpt, draft,
+  headings, related = [],
+} = Astro.props;
 const toc = headings.filter((h) => h.depth === 2);
-const dateStr = date.toISOString().slice(0, 10);
 ---
-<BaseLayout title={title} description={excerpt}>
+<BaseLayout
+  title={title}
+  description={excerpt}
+  image={cover}
+  noindex={draft}
+  article={{ published: date, modified: updated ?? date, tags, section: REDTEAM_CATEGORIES[category] }}
+>
   <div class="container">
     <div class="writeup">
       <aside class="toc">
@@ -31,8 +44,9 @@ const dateStr = date.toISOString().slice(0, 10);
       </aside>
 
       <article class="post">
+        <Breadcrumbs crumbs={postCrumbs('redteam', title)} />
         <h1>{title}</h1>
-        <p class="post-meta">{dateStr} &middot; <span class={`badge ${difficulty}`}>{difficulty}</span></p>
+        <p class="post-meta"><PostDates date={date} updated={updated} /> &middot; <span class={`badge ${difficulty}`}>{difficulty}</span></p>
         {draft && <p class="post-meta"><span class="badge draft">draft / incomplete</span></p>}
         <div class="post-tags">
           {tags.map((t) => <a class="tag" href={`/tags/${t.toLowerCase()}/`}>#{t}</a>)}
@@ -47,6 +61,12 @@ const dateStr = date.toISOString().slice(0, 10);
           <h4>Category</h4>
           <a class="tag" href={`/redteam/categories/${category}/`}>{REDTEAM_CATEGORIES[category]}</a>
         </div>
+        {related.length > 0 && (
+          <div class="block related">
+            <h4>Related</h4>
+            {related.map((r) => <a href={`/redteam/${r.slug}/`}>{r.title}</a>)}
+          </div>
+        )}
       </aside>
     </div>
   </div>

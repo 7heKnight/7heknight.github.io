@@ -12,7 +12,10 @@ const byCat = Object.entries(REDTEAM_CATEGORIES).map(([slug, label]) => ({
     .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf()),
 })).filter((c) => c.items.length > 0);
 ---
-<BaseLayout title="Red Team Categories">
+<BaseLayout
+  title="Red Team Categories"
+  description="Red team research grouped by kill-chain phase: recon and enumeration, host persistence, lateral movement and insecure deserialization."
+>
   <div class="container">
     <section class="hero">
       <h1>$ ls redteam/categories/</h1>

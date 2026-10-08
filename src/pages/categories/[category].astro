@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
 import { CATEGORIES } from '../../content/config';
+import { isIndexableListing } from '../../lib/posts';
 
 export async function getStaticPaths() {
   const posts = await getCollection('writeups');
@@ -17,8 +18,9 @@ export async function getStaticPaths() {
   }));
 }
 const { label, posts } = Astro.props;
+const description = `${posts.length} writeup${posts.length === 1 ? '' : 's'} on 7heKnight in ${label}: ${posts.slice(0, 3).map((p) => p.data.title).join('; ')}.`;
 ---
-<BaseLayout title={`Category: ${label}`}>
+<BaseLayout title={`Category: ${label}`} description={description} noindex={!isIndexableListing(posts.length)}>
   <div class="container">
     <section class="hero">
       <h1>$ grep -r category={label}</h1>

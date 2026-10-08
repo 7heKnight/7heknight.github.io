@@ -7,7 +7,10 @@ const posts = (await getCollection('redteam')).sort(
   (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
 );
 ---
-<BaseLayout title="Red Team">
+<BaseLayout
+  title="Red Team Research"
+  description="Red team research across the cyber kill chain: OSINT recon, Windows persistence, lateral movement, insecure deserialization and cloud attack chains, with detection guidance."
+>
   <div class="container">
     <section class="hero">
       <h1>$ ./redteam --kill-chain</h1>
