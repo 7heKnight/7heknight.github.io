@@ -1,33 +1,31 @@
 ---
-import { CATEGORIES } from '../content/config';
+// The one post card used by every listing (home, section index, categories, tags).
+import type { Post } from '../lib/posts';
+
 interface Props {
-  slug: string;
-  title: string;
-  excerpt: string;
-  date: Date;
-  category: keyof typeof CATEGORIES;
-  difficulty: string;
-  cover?: string;
-  draft?: boolean;
+  post: Post;
+  level?: 'h2' | 'h3'; // heading level of the title: h2 under a page h1, h3 under a section h2
 }
-const { slug, title, excerpt, date, category, difficulty, cover, draft } = Astro.props;
-const href = `/writeups/${slug}/`;
-const dateStr = date.toISOString().slice(0, 10);
+const { post, level: Heading = 'h2' } = Astro.props;
+// Pentest posts show their part number; everything else the terminal prompt glyph.
+const glyph = post.seriesOrder ? String(post.seriesOrder).padStart(2, '0') : '>_';
+const day = post.date.toISOString().slice(0, 10);
 ---
 <article class="card">
-  <a href={href}>
-    {cover
-      ? <div class="card-thumb"><img src={cover} alt={title} loading="lazy" /></div>
-      : <div class="card-noimg">&gt;_</div>}
+  <!-- Decorative duplicate of the title link: out of the tab order and the accessibility tree. -->
+  <a href={post.url} tabindex="-1" aria-hidden="true">
+    {post.cover
+      ? <div class="card-thumb"><img src={post.cover} alt="" loading="lazy" /></div>
+      : <div class="card-noimg" data-glyph={glyph}></div>}
   </a>
   <div class="card-body">
     <div class="card-meta">
-      <span class="card-cat">{CATEGORIES[category]}</span>
-      <span class={`badge ${difficulty}`}>{difficulty}</span>
-      {draft && <span class="badge draft">draft</span>}
+      <span class="card-cat">{post.categoryLabel}</span>
+      <span class={`badge ${post.difficulty}`}>{post.difficulty}</span>
+      {post.draft && <span class="badge draft">draft</span>}
     </div>
-    <a href={href}><h3>{title}</h3></a>
-    <p>{excerpt}</p>
-    <span class="date">{dateStr}</span>
+    <a href={post.url}><Heading class="card-title">{post.title}</Heading></a>
+    <p>{post.excerpt}</p>
+    <span class="date">{post.platform ? `${post.platform} · ${day}` : day}</span>
   </div>
 </article>

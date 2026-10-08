@@ -1,4 +1,3 @@
-import { CATEGORIES, PENTEST_CATEGORIES, REDTEAM_CATEGORIES } from '../content/config';
 import {
   SECTIONS, getAllPosts, groupByTag, isIndexableListing, lastModified, type Section,
 } from '../lib/posts';

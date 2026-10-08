@@ -9,6 +9,11 @@ excerpt: "A practical reference: assembling x86/x64 Linux shellcode with NASM, e
 draft: false
 ---
 
+> Educational material only. The techniques below are documented for
+> authorized penetration testing, security research and defensive
+> understanding. Do not run any of this against systems you are not
+> explicitly authorized to test.
+
 ## *Linux Assembly compiling instruction:*
 - For **x32**:
 

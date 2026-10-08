@@ -10,7 +10,14 @@ cover: "/writeups/stack-canary-bypass/canary_img1.png"
 draft: false
 ---
 
+
 # 1. Stack Canary:
+
+> Educational material only. The techniques below are documented for
+> authorized penetration testing, security research and defensive
+> understanding. Do not run any of this against systems you are not
+> explicitly authorized to test.
+
 - Stack canaries or security cookies are tell-tale values added to binaries during compilation to protect critical stack values like the Return Pointer against buffer overflow attacks. If an incorrect canary is detected during certain stages of the execution flow, such as right before a return (RET), the program will be terminated. Their presence makes exploitation of such vulnerabilities more difficult. But not impossible.
 ---
 

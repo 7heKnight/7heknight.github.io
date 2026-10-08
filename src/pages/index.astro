@@ -1,19 +1,14 @@
 ---
-import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
-import PentestCard from '../components/PentestCard.astro';
-import RedteamCard from '../components/RedteamCard.astro';
+import { getAllPosts, sortForSection, type Section } from '../lib/posts';
 
-const writeups = (await getCollection('writeups'))
-  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
-  .slice(0, 3);
-const pentest = (await getCollection('pentest'))
-  .sort((a, b) => (a.data.seriesOrder ?? 99) - (b.data.seriesOrder ?? 99))
-  .slice(0, 3);
-const redteam = (await getCollection('redteam'))
-  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
-  .slice(0, 3);
+const all = await getAllPosts();
+const latest = (section: Section) =>
+  sortForSection(section, all.filter((p) => p.section === section)).slice(0, 3);
+const writeups = latest('writeups');
+const pentest = latest('pentest');
+const redteam = latest('redteam');
 ---
 <BaseLayout title="7heKnight">
   <div class="container">
@@ -35,13 +30,7 @@ const redteam = (await getCollection('redteam'))
       </p>
     </section>
     <div class="card-grid">
-      {writeups.map((p) => (
-        <PostCard
-          slug={p.slug} title={p.data.title} excerpt={p.data.excerpt}
-          date={p.data.date} category={p.data.category}
-          difficulty={p.data.difficulty} cover={p.data.cover} draft={p.data.draft}
-        />
-      ))}
+      {writeups.map((p) => <PostCard post={p} level="h3" />)}
     </div>
 
     <section style="margin-bottom:8px">
@@ -53,14 +42,7 @@ const redteam = (await getCollection('redteam'))
       </p>
     </section>
     <div class="card-grid">
-      {pentest.map((p) => (
-        <PentestCard
-          slug={p.slug} title={p.data.title} excerpt={p.data.excerpt}
-          date={p.data.date} category={p.data.category}
-          difficulty={p.data.difficulty} platform={p.data.platform}
-          seriesOrder={p.data.seriesOrder} draft={p.data.draft}
-        />
-      ))}
+      {pentest.map((p) => <PostCard post={p} level="h3" />)}
     </div>
 
     <section style="margin-bottom:8px">
@@ -72,13 +54,7 @@ const redteam = (await getCollection('redteam'))
       </p>
     </section>
     <div class="card-grid">
-      {redteam.map((p) => (
-        <RedteamCard
-          slug={p.slug} title={p.data.title} excerpt={p.data.excerpt}
-          date={p.data.date} category={p.data.category}
-          difficulty={p.data.difficulty} draft={p.data.draft}
-        />
-      ))}
+      {redteam.map((p) => <PostCard post={p} level="h3" />)}
     </div>
   </div>
 </BaseLayout>

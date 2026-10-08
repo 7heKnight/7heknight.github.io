@@ -1,0 +1,11 @@
+---
+import CategoryView from '../../../components/CategoryView.astro';
+import { NESTED_CATEGORY_SECTIONS, SECTIONS, type Section } from '../../../lib/posts';
+
+export const getStaticPaths = () =>
+  NESTED_CATEGORY_SECTIONS.flatMap((section) =>
+    Object.keys(SECTIONS[section].categories).map((category) => ({ params: { section, category } })),
+  );
+const { section, category } = Astro.params;
+---
+<CategoryView section={section as Section} category={category!} />

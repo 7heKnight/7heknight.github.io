@@ -10,6 +10,11 @@ cover: "/writeups/hidden-function/image1.png"
 draft: false
 ---
 
+> Educational material only. The techniques below are documented for
+> authorized penetration testing, security research and defensive
+> understanding. Do not run any of this against systems you are not
+> explicitly authorized to test.
+
 ## Task 1: Connect to the compromised machine and identify interesting binaries
 
 Using bash or any other scripting language, you might want to examine the file system in order to quickly locate interesting binaries. Be reminded that vulnerable SUID binaries can result in privilege escalation.

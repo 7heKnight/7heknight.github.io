@@ -1,0 +1,77 @@
+---
+// The one layout for every post, whatever the track. Track differences
+// (contents depth, prev/next, sidebar block) arrive as data from
+// lib/section-view.ts and lib/posts.ts#postContext.
+import BaseLayout from './BaseLayout.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import PostDates from '../components/PostDates.astro';
+import { SECTIONS, postCrumbs, type Post, type PostContext } from '../lib/posts';
+import { SECTION_VIEW } from '../lib/section-view';
+import type { MarkdownHeading } from 'astro';
+
+interface Props extends PostContext {
+  post: Post;
+  headings: MarkdownHeading[];
+}
+const { post, headings, nav, aside } = Astro.props;
+const { toc: tocView } = SECTION_VIEW[post.section];
+const toc = headings.filter((h) => tocView.depths.includes(h.depth));
+const section = SECTIONS[post.section];
+const extra = post.source ?? post.platform; // writeups: source; pentest: platform
+---
+<BaseLayout
+  title={post.title}
+  description={post.excerpt}
+  image={post.cover}
+  noindex={post.draft}
+  article={{ published: post.date, modified: post.updated, tags: post.tags, section: post.categoryLabel }}
+>
+  <div class="container">
+    <div class="writeup">
+      <aside class="toc" aria-label="Contents">
+        <p class="side-title">Contents</p>
+        <ul>
+          {toc.map((h) => (
+            <li style={tocView.indent ? `padding-left:${(h.depth - 1) * 10}px` : undefined}>
+              <a href={`#${h.slug}`}>{h.text}</a>
+            </li>
+          ))}
+        </ul>
+      </aside>
+
+      <article class="post">
+        <Breadcrumbs crumbs={postCrumbs(post.section, post.title)} />
+        <h1>{post.title}</h1>
+        <p class="post-meta"><PostDates date={post.date} updated={post.updated} />{extra && <> &middot; {extra}</>} &middot; <span class={`badge ${post.difficulty}`}>{post.difficulty}</span></p>
+        {post.draft && <p class="post-meta"><span class="badge draft">draft / incomplete</span></p>}
+        <div class="post-tags">
+          {post.tags.map((t) => <a class="tag" href={`/tags/${t.toLowerCase()}/`}>#{t}</a>)}
+        </div>
+        <div class="body">
+          <slot />
+        </div>
+        {nav && (
+          <nav class="post-nav" aria-label="Previous and next posts">
+            {nav.prev ? <a href={nav.prev.href}>&larr; {nav.prev.label}</a> : <span></span>}
+            {nav.next ? <a href={nav.next.href} style="text-align:right">{nav.next.label} &rarr;</a> : <span></span>}
+          </nav>
+        )}
+      </article>
+
+      <aside class="meta-side" aria-label="Post details">
+        <div class="block">
+          <p class="side-title">Category</p>
+          <a class="tag" href={`${section.categoryPath}${post.category}/`}>{post.categoryLabel}</a>
+        </div>
+        {aside && (
+          <div class="block related">
+            <p class="side-title">{aside.heading}</p>
+            {aside.links.map((l) => (
+              <a href={l.href} style={l.current ? 'color:#fff;font-weight:700' : undefined}>{l.label}</a>
+            ))}
+          </div>
+        )}
+      </aside>
+    </div>
+  </div>
+</BaseLayout>

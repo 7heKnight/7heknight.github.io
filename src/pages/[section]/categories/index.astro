@@ -1,0 +1,8 @@
+---
+import CategoryIndexView from '../../../components/CategoryIndexView.astro';
+import { NESTED_CATEGORY_SECTIONS, type Section } from '../../../lib/posts';
+
+export const getStaticPaths = () => NESTED_CATEGORY_SECTIONS.map((section) => ({ params: { section } }));
+const section = Astro.params.section as Section;
+---
+<CategoryIndexView section={section} />

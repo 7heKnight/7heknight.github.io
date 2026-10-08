@@ -7,11 +7,11 @@
 //   node scripts/indexnow.mjs --base <sha> --head <sha> [--dry-run]
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
+import { SECTIONS } from '../src/content/taxonomy.mjs';
 
 const ORIGIN = 'https://7heknight.github.io';
 const ENDPOINT = 'https://api.indexnow.org/indexnow';
-const SECTIONS = ['writeups', 'pentest', 'redteam']; // keep in sync with SECTIONS in src/lib/posts.ts
-const POST_PATH = new RegExp(`^src/content/(${SECTIONS.join('|')})/([^/]+)\\.md$`);
+const POST_PATH = new RegExp(`^src/content/(${Object.keys(SECTIONS).join('|')})/([^/]+)\\.md$`);
 
 // `git diff --name-only` lines -> absolute URLs whose content changed: each
 // post plus its section index and the home page (both list it).

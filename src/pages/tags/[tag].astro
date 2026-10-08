@@ -1,8 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCard from '../../components/PostCard.astro';
-import PentestCard from '../../components/PentestCard.astro';
-import RedteamCard from '../../components/RedteamCard.astro';
 import { getAllPosts, groupByTag, isIndexableListing } from '../../lib/posts';
 
 export async function getStaticPaths() {
@@ -20,22 +18,7 @@ const description = `${total} post${total === 1 ? '' : 's'} tagged #${tag} on 7h
       <p>{total} post{total === 1 ? '' : 's'} tagged <code>#{tag}</code>.</p>
     </section>
     <div class="card-grid">
-      {posts.map((p) => {
-        if (p.section === 'writeups') {
-          const d = p.entry.data;
-          return <PostCard slug={p.slug} title={d.title} excerpt={d.excerpt} date={d.date}
-            category={d.category} difficulty={d.difficulty} cover={d.cover} draft={d.draft} />;
-        }
-        if (p.section === 'pentest') {
-          const d = p.entry.data;
-          return <PentestCard slug={p.slug} title={d.title} excerpt={d.excerpt} date={d.date}
-            category={d.category} difficulty={d.difficulty} platform={d.platform}
-            seriesOrder={d.seriesOrder} draft={d.draft} />;
-        }
-        const d = p.entry.data;
-        return <RedteamCard slug={p.slug} title={d.title} excerpt={d.excerpt} date={d.date}
-          category={d.category} difficulty={d.difficulty} draft={d.draft} />;
-      })}
+      {posts.map((p) => <PostCard post={p} />)}
     </div>
   </div>
 </BaseLayout>

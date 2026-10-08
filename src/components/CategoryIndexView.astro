@@ -1,0 +1,37 @@
+---
+// "All categories" page for one track.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SECTIONS, getAllPosts, sortForSection, type Section } from '../lib/posts';
+import { SECTION_VIEW } from '../lib/section-view';
+
+interface Props { section: Section; }
+const { section } = Astro.props;
+const v = SECTION_VIEW[section].categories;
+const { categories, categoryPath } = SECTIONS[section];
+const posts = sortForSection(section, (await getAllPosts()).filter((p) => p.section === section));
+const byCat = Object.entries(categories)
+  .map(([slug, label]) => ({ slug, label, items: posts.filter((p) => p.category === slug) }))
+  .filter((c) => c.items.length > 0);
+---
+<BaseLayout title={v.title} description={v.description}>
+  <div class="container">
+    <section class="hero">
+      <h1>{v.heroCmd}</h1>
+      <p>{v.heroText}</p>
+    </section>
+    {byCat.map((c) => (
+      <section class="section-card" id={c.slug}>
+        <h2><a href={`${categoryPath}${c.slug}/`}>{c.label}</a></h2>
+        <ul>
+          {c.items.map((p) => (
+            <li>
+              <a href={p.url}>{p.title}</a>
+              <span class="date"> &mdash; {p.platform ?? p.date.toISOString().slice(0, 10)}</span>
+              {p.draft && <span class="badge draft" style="margin-left:8px">draft</span>}
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+  </div>
+</BaseLayout>

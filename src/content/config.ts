@@ -1,100 +1,17 @@
 import { defineCollection, z } from 'astro:content';
+import { CATEGORIES, PENTEST_CATEGORIES, REDTEAM_CATEGORIES } from './taxonomy.mjs';
+import { pentestSchema, redteamSchema, writeupSchema } from './schemas.mjs';
 
-// Primary technical categories for binary-exploitation writeups.
-export const CATEGORIES = {
-  'buffer-overflow': 'Buffer Overflow',
-  'dep-nx-bypass': 'DEP / NX Bypass',
-  'aslr-bypass': 'ASLR Bypass',
-  'stack-canary': 'Stack Canary',
-  'windows-exploit': 'Windows Exploitation',
-  'shellcode': 'Shellcode',
-  'web-security': 'Web Security',
-  'ctf-writeup': 'CTF Writeup',
-} as const;
+// Re-exported so layouts and pages keep importing taxonomy from one place.
+export { CATEGORIES, PENTEST_CATEGORIES, REDTEAM_CATEGORIES };
 
 export type CategorySlug = keyof typeof CATEGORIES;
-
-// Categories for the mobile / Android pentest track.
-export const PENTEST_CATEGORIES = {
-  'fundamentals': 'Fundamentals',
-  'certificate-injection': 'Certificate Injection',
-  'root-detection-bypass': 'Root Detection Bypass',
-  'ssl-pinning-bypass': 'SSL Pinning Bypass',
-  'traffic-interception': 'Traffic Interception',
-  'tools-scripts': 'Tools & Scripts',
-} as const;
-
 export type PentestCategorySlug = keyof typeof PENTEST_CATEGORIES;
-
-// Categories for the red-team / cyber kill-chain research track.
-export const REDTEAM_CATEGORIES = {
-  'recon-enum': 'Recon & Enumeration',
-  'persistence': 'Host Persistence',
-  'lateral-movement': 'Lateral Movement',
-  'deserialization': 'Insecure Deserialization',
-} as const;
-
 export type RedteamCategorySlug = keyof typeof REDTEAM_CATEGORIES;
 
-const writeups = defineCollection({
-  type: 'content',
-  schema: z.object({
-    title: z.string(),
-    date: z.coerce.date(),
-    category: z.enum(
-      Object.keys(CATEGORIES) as [CategorySlug, ...CategorySlug[]]
-    ),
-    tags: z.array(z.string()).default([]),
-    difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
-    source: z.string(), // e.g. "INE", "pwnable.kr"
-    excerpt: z.string(),
-    cover: z.string().optional(), // path under /writeups/<slug>/
-    updated: z.coerce.date().optional(), // set when a post is materially revised (feeds dateModified / sitemap lastmod)
-    draft: z.boolean().default(false),
-  }),
-});
-
-const pentest = defineCollection({
-  type: 'content',
-  schema: z.object({
-    title: z.string(),
-    date: z.coerce.date(),
-    category: z.enum(
-      Object.keys(PENTEST_CATEGORIES) as [
-        PentestCategorySlug,
-        ...PentestCategorySlug[]
-      ]
-    ),
-    tags: z.array(z.string()).default([]),
-    difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
-    platform: z.string().default('Android'), // e.g. "Android <14", "Android 14+"
-    excerpt: z.string(),
-    // Optional series grouping so multi-part runbooks link together.
-    series: z.string().optional(),
-    seriesOrder: z.number().optional(),
-    updated: z.coerce.date().optional(), // set when a post is materially revised (feeds dateModified / sitemap lastmod)
-    draft: z.boolean().default(false),
-  }),
-});
-
-const redteam = defineCollection({
-  type: 'content',
-  schema: z.object({
-    title: z.string(),
-    date: z.coerce.date(),
-    category: z.enum(
-      Object.keys(REDTEAM_CATEGORIES) as [
-        RedteamCategorySlug,
-        ...RedteamCategorySlug[]
-      ]
-    ),
-    tags: z.array(z.string()).default([]),
-    difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
-    excerpt: z.string(),
-    cover: z.string().optional(), // path under /redteam/<slug>/
-    updated: z.coerce.date().optional(), // set when a post is materially revised (feeds dateModified / sitemap lastmod)
-    draft: z.boolean().default(false),
-  }),
-});
-
-export const collections = { writeups, pentest, redteam };
+// Schemas live in schemas.mjs so Node tooling validates against the same contract.
+export const collections = {
+  writeups: defineCollection({ type: 'content', schema: writeupSchema(z) }),
+  pentest: defineCollection({ type: 'content', schema: pentestSchema(z) }),
+  redteam: defineCollection({ type: 'content', schema: redteamSchema(z) }),
+};

@@ -10,6 +10,11 @@ cover: "/writeups/pwnablekr-bof/pwnable.kr-website.png"
 draft: false
 ---
 
+> Educational material only. The techniques below are documented for
+> authorized penetration testing, security research and defensive
+> understanding. Do not run any of this against systems you are not
+> explicitly authorized to test.
+
 > **Editor's note.** The original writeup ended right after the `func`
 > disassembly. Sections 1.2.3 onward were reconstructed from the source
 > code and the disassembly already shown, so the exploit is complete.

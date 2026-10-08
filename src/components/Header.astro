@@ -6,7 +6,7 @@ const isActive = (p: string) =>
 <header class="site-header">
   <div class="container">
     <a href="/" class="brand"><span class="prompt">0x</span>7319<span class="prompt">$</span></a>
-    <nav class="nav-links">
+    <nav class="nav-links" aria-label="Primary">
       <a href="/" aria-current={pathname === '/' ? 'page' : undefined}>Home</a>
       <a href="/writeups/" aria-current={isActive('/writeups') || isActive('/categories') ? 'page' : undefined}>Writeups</a>
       <a href="/pentest/" aria-current={isActive('/pentest') ? 'page' : undefined}>Pentest</a>

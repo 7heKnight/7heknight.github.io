@@ -1,0 +1,26 @@
+---
+// One category archive. Archives listing fewer than 2 posts are noindex (see lib/seo.ts).
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from './PostCard.astro';
+import { SECTIONS, getAllPosts, isIndexableListing, sortForSection, type Section } from '../lib/posts';
+import { SECTION_VIEW } from '../lib/section-view';
+
+interface Props { section: Section; category: string; }
+const { section, category } = Astro.props;
+const v = SECTION_VIEW[section].category;
+const label = (SECTIONS[section].categories as Record<string, string>)[category];
+const posts = sortForSection(section, (await getAllPosts()).filter((p) => p.section === section && p.category === category));
+const n = posts.length;
+const description = `${n} ${v.noun}${n === 1 ? '' : 's'} on 7heKnight in ${label}: ${posts.slice(0, 3).map((p) => p.title).join('; ')}.`;
+---
+<BaseLayout title={v.title(label)} description={description} noindex={!isIndexableListing(n)}>
+  <div class="container">
+    <section class="hero">
+      <h1>{v.heroCmd(label)}</h1>
+      <p>{n} {v.noun}{n === 1 ? '' : 's'} in this category.</p>
+    </section>
+    <div class="card-grid">
+      {posts.map((p) => <PostCard post={p} />)}
+    </div>
+  </div>
+</BaseLayout>

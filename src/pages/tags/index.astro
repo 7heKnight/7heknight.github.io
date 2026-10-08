@@ -17,7 +17,7 @@ const tags = [...groupByTag(await getAllPosts())]
     </section>
     <div class="taxo-bar">
       {tags.map(([t, n]) => (
-        <a class="tag" href={`/tags/${t}/`}>#{t} <span style="opacity:.6">({n})</span></a>
+        <a class="tag" href={`/tags/${t}/`}>#{t} <span class="count">({n})</span></a>
       ))}
     </div>
   </div>

@@ -1,44 +1,9 @@
 ---
-import { getCollection } from 'astro:content';
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import PostCard from '../../components/PostCard.astro';
-import { CATEGORIES } from '../../content/config';
-import { isIndexableListing } from '../../lib/posts';
+import CategoryView from '../../components/CategoryView.astro';
+import { SECTIONS } from '../../lib/posts';
 
-export async function getStaticPaths() {
-  const posts = await getCollection('writeups');
-  return Object.entries(CATEGORIES).map(([slug, label]) => ({
-    params: { category: slug },
-    props: {
-      label,
-      posts: posts
-        .filter((p) => p.data.category === slug)
-        .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf()),
-    },
-  }));
-}
-const { label, posts } = Astro.props;
-const description = `${posts.length} writeup${posts.length === 1 ? '' : 's'} on 7heKnight in ${label}: ${posts.slice(0, 3).map((p) => p.data.title).join('; ')}.`;
+export const getStaticPaths = () =>
+  Object.keys(SECTIONS.writeups.categories).map((category) => ({ params: { category } }));
+const { category } = Astro.params;
 ---
-<BaseLayout title={`Category: ${label}`} description={description} noindex={!isIndexableListing(posts.length)}>
-  <div class="container">
-    <section class="hero">
-      <h1>$ grep -r category={label}</h1>
-      <p>{posts.length} writeup{posts.length === 1 ? '' : 's'} in this category.</p>
-    </section>
-    <div class="card-grid">
-      {posts.map((p) => (
-        <PostCard
-          slug={p.slug}
-          title={p.data.title}
-          excerpt={p.data.excerpt}
-          date={p.data.date}
-          category={p.data.category}
-          difficulty={p.data.difficulty}
-          cover={p.data.cover}
-          draft={p.data.draft}
-        />
-      ))}
-    </div>
-  </div>
-</BaseLayout>
+<CategoryView section="writeups" category={category!} />

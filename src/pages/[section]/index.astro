@@ -1,0 +1,8 @@
+---
+import SectionIndexView from '../../components/SectionIndexView.astro';
+import { SECTIONS } from '../../lib/posts';
+
+export const getStaticPaths = () => Object.keys(SECTIONS).map((section) => ({ params: { section } }));
+const { section } = Astro.params;
+---
+<SectionIndexView section={section as keyof typeof SECTIONS} />

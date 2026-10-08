@@ -8,13 +8,27 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "check": "astro check"
+    "new": "node scripts/new.mjs",
+    "check": "astro check --minimumFailingSeverity warning",
+    "check:content": "node scripts/check-content.mjs",
+    "check:dist": "node scripts/audit-dist.mjs",
+    "test:unit": "node --test scripts/content.test.mjs scripts/tokens.test.mjs",
+    "test:dist": "node --test scripts/audit-dist.test.mjs scripts/e2e.test.mjs",
+    "verify": "npm run check && npm run check:content && npm run test:unit && npm run build && npm run check:dist && npm run test:dist",
+    "prepare": "node scripts/install-hooks.mjs"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.7",
     "astro": "^4.16.0"
   },
   "devDependencies": {
-    "playwright": "^1.60.0"
+    "@astrojs/check": "^0.9.10",
+    "@axe-core/playwright": "^4.13.0",
+    "playwright": "^1.60.0",
+    "typescript": "^5.9.3",
+    "yaml": "^2.9.1"
+  },
+  "engines": {
+    "node": ">=20.3"
   }
 }

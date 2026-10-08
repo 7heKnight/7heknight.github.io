@@ -9,6 +9,11 @@ excerpt: "When you can't leak an address, you can still win by guessing it. Defe
 draft: false
 ---
 
+> Educational material only. The techniques below are documented for
+> authorized penetration testing, security research and defensive
+> understanding. Do not run any of this against systems you are not
+> explicitly authorized to test.
+
 > **Editor's note.** The original repository only contained a one-line
 > placeholder ("Lazy writing report, so skip it :P") plus the working
 > `vulnerable.c`, `exploit.py` and `run.sh`. This writeup reconstructs the

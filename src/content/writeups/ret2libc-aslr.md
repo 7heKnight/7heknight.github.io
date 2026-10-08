@@ -10,6 +10,11 @@ cover: "/writeups/ret2libc-aslr/lab3_img1.png"
 draft: false
 ---
 
+> Educational material only. The techniques below are documented for
+> authorized penetration testing, security research and defensive
+> understanding. Do not run any of this against systems you are not
+> explicitly authorized to test.
+
 ## Task 1: Connect to the lab and examine the binary
 
 Try to access the service at 172.16.172.41:4444. Compare it with the "pwn3" binary available on xdev's Desktop. Try to find the buffer overflow vulnerability and control the EIP.

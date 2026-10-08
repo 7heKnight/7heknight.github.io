@@ -1,4 +1,6 @@
-// Rehype plugin for Markdown images that live under public/:
+// Rehype plugin that post-processes rendered Markdown posts.
+//
+// Images that live under public/:
 //  - replaces filename-style alt text ("image1.png") with the nearest heading,
 //    so screenshots carry topical context for image search and screen readers;
 //    hand-written alt text is left untouched
@@ -22,7 +24,7 @@ function imageSize(src) {
   try {
     buf = readFileSync(PUBLIC_DIR + decodeURIComponent(src).replace(/^\//, ''));
   } catch {
-    throw new Error(`rehype-image-seo: image not found under public/: ${src}`);
+    throw new Error(`rehype-post-content: image not found under public/: ${src}`);
   }
   if (buf.length > 24 && buf.readUInt32BE(0) === PNG_MAGIC) {
     return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
@@ -40,11 +42,16 @@ function imageSize(src) {
   return null;
 }
 
-export default function rehypeImageSeo() {
+// Tables:
+//  - wrapped in a keyboard-focusable, labelled scroll region so wide tables
+//    scroll inside the article instead of widening the page (WCAG 2.1.1)
+
+export default function rehypePostContent() {
   return (tree, file) => {
     const title = file.data?.astro?.frontmatter?.title ?? '';
     let heading = title;
     let figure = 0;
+    let tables = 0;
 
     const walk = (node) => {
       if (node.type === 'element') {
@@ -70,7 +77,18 @@ export default function rehypeImageSeo() {
           if (size) Object.assign(props, size, { loading: 'lazy', decoding: 'async' });
         }
       }
-      (node.children ?? []).forEach(walk);
+      if (node.children) {
+        node.children = node.children.map((child) => {
+          walk(child);
+          if (child.type !== 'element' || child.tagName !== 'table') return child;
+          return {
+            type: 'element',
+            tagName: 'div',
+            properties: { className: ['table-scroll'], role: 'region', tabIndex: 0, ariaLabel: `Table ${++tables}: ${heading}` },
+            children: [child],
+          };
+        });
+      }
     };
     walk(tree);
   };

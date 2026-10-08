@@ -1,0 +1,72 @@
+/*
+ * Design tokens: the single source of truth for the visual language.
+ * Dark-only on purpose (security-tool aesthetic, high contrast). Every text /
+ * background pair used in the UI is verified against WCAG AA (4.5:1) by
+ * scripts/tokens.test.mjs, so changing a value here is safe only if that test passes.
+ */
+
+:root {
+  color-scheme: dark; /* dark scrollbars and form controls on every OS */
+
+  /* Surfaces */
+  --bg: #242424;
+  --bg-alt: #2e2e2e;
+  --bg-elev: #353535;
+  --bg-sunken: #1a1a1a; /* code, thumbnails */
+  --bg-hover: #181818;
+  --border: #434343;
+
+  /* Text */
+  --text: #f0e7d5;
+  --text-strong: #ffffff;
+  --text-soft: #d0d0d0;
+  --muted: #a8a8a8;
+  --text-on-accent: #000000;
+
+  /* Brand */
+  --accent: #ffcc00;
+
+  /* Status: difficulty badges today, severity chips tomorrow (info / low / medium / high / critical) */
+  --ok: #6fcf73;
+  --warn: #ffa726;
+  --danger: #ff8a80;
+  --tint-alpha: .14; /* badge fill = status colour at this alpha over the surface */
+  --code-inline: #7fdbca;
+
+  /* Typography: native fonts only. A bundled webfont was measured and rejected
+   (+20-200 ms FCP for glyph identity only); each OS gets its own best monospace. */
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Ubuntu, Cantarell, Arial, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  --fs-xs: .75rem;
+  --fs-sm: .85rem;
+  --fs-md: .9rem;
+  --fs-base: 1rem;
+  --fs-lg: 1.1rem;
+  --fs-xl: 1.3rem;
+  --fs-2xl: 1.6rem;
+  --fs-3xl: 2rem;
+
+  /* Spacing: 4px base */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 36px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Shape and layout */
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 8px;
+  --radius-pill: 999px;
+  --container: 1180px;
+  --gutter: var(--space-5);
+  --z-header: 50;
+
+  /* Interaction */
+  --focus-ring: 2px solid var(--accent);
+  --touch-min: 44px;
+  --ease: .15s;
+}

@@ -1,22 +1,26 @@
-name: Deploy to GitHub Pages
+name: CI and Deploy
 
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
-# Allow one concurrent deployment, cancel in-progress runs.
+# A newer run for the same ref supersedes the older one.
 concurrency:
-  group: pages
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
+  # The one quality gate. It runs exactly what contributors run locally (the
+  # .githooks call `npm run verify` on every commit and push), so green here
+  # and green locally mean the same thing: types, content schema and rules,
+  # unit tests, build, dist SEO/link audit, and cross-viewport browser +
+  # accessibility checks.
+  verify:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,23 +29,32 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build site
-        run: npm run build
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify
+        run: npm run verify
 
       - name: Upload artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
 
+  # Only a verified build of main is ever published.
   deploy:
-    needs: build
+    needs: verify
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -66,7 +79,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
 
       - name: Submit changed URLs
         run: node scripts/indexnow.mjs --base "${{ github.event.before }}" --head "${{ github.sha }}"

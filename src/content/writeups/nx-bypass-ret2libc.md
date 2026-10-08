@@ -282,33 +282,33 @@ From a defender's point of view, ret2libc is exactly why NX alone is insufficien
 -----------------
 # 5. Reference
 
-### 5.1 NX / DEP — the defence being bypassed
+## 5.1 NX / DEP — the defence being bypassed
 
 - [NX bit — Wikipedia](https://en.wikipedia.org/wiki/NX_bit) — what the no-execute bit is at the CPU level.
 - [Executable-space protection — Wikipedia](https://en.wikipedia.org/wiki/Executable-space_protection) — the general W^X / DEP concept across OSes.
 - [Data Execution Prevention — Microsoft](https://learn.microsoft.com/en-us/windows/win32/memory/data-execution-prevention) — the Windows equivalent and its enforcement modes.
 
-### 5.2 ret2libc / ret2system technique
+## 5.2 ret2libc / ret2system technique
 
 - [Return-to-libc attack — Wikipedia](https://en.wikipedia.org/wiki/Return-to-libc_attack) — the canonical description of the technique used here.
 - [Bypassing NX with return-to-libc — LiveOverflow](https://www.youtube.com/watch?v=m17mbS5b7vk) — video walkthrough of the same idea.
 - [Return-oriented programming — Wikipedia](https://en.wikipedia.org/wiki/Return-oriented_programming) — the generalisation of ret2libc once you need to chain gadgets.
 - [Phrack 58:4 — "The advanced return-into-lib(c) exploits"](http://phrack.org/issues/58/4.html) — the classic in-depth paper on chained ret2libc.
 
-### 5.3 Calling convention & stack mechanics
+## 5.3 Calling convention & stack mechanics
 
 - [x86 calling conventions — Wikipedia](https://en.wikipedia.org/wiki/X86_calling_conventions) — why the payload is `&func + &ret + &arg` in `cdecl`.
 - [System V ABI (i386)](https://gitlab.com/x86-psABIs/x86-64-ABI) — authoritative stack-layout/calling-convention spec.
 - [`system(3)`](https://man7.org/linux/man-pages/man3/system.3.html) and [`exit(3)`](https://man7.org/linux/man-pages/man3/exit.3.html) — the libc functions being returned into.
 - [Endianness — Wikipedia](https://en.wikipedia.org/wiki/Endianness) — why addresses are packed little-endian (`pack('<I', ...)`).
 
-### 5.4 Tooling
+## 5.4 Tooling
 
 - [GDB Documentation](https://sourceware.org/gdb/current/onlinedocs/gdb/) — `print`, `find`, breakpoints, examining libc symbols.
 - [peda](https://github.com/longld/peda), [pwndbg](https://github.com/pwndbg/pwndbg), [GEF](https://github.com/hugsy/gef) — GDB enhancements (`pattern create/offset`, `checksec`).
 - [pwntools documentation](https://docs.pwntools.com/) — `cyclic`, `ELF`, `process`/`remote`, libc offset helpers.
 
-### 5.5 Going further (NX + ASLR together)
+## 5.5 Going further (NX + ASLR together)
 
 - [Linux ASLR (`randomize_va_space`) — kernel.org](https://www.kernel.org/doc/Documentation/admin-guide/sysctl/kernel.rst) — why hard-coded libc addresses break with ASLR on.
 - [ROP Emporium](https://ropemporium.com/) — guided practice for ret2libc and ROP chains.

@@ -1,0 +1,26 @@
+---
+// Listing page for one track (/writeups/, /pentest/, /redteam/).
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from './PostCard.astro';
+import { getAllPosts, sortForSection, type Section } from '../lib/posts';
+import { SECTION_VIEW } from '../lib/section-view';
+
+interface Props { section: Section; }
+const { section } = Astro.props;
+const v = SECTION_VIEW[section].index;
+const posts = sortForSection(section, (await getAllPosts()).filter((p) => p.section === section));
+---
+<BaseLayout title={v.title} description={v.description}>
+  <div class="container">
+    <section class="hero">
+      <h1>{v.heroCmd}</h1>
+      <p>
+        {v.heroText}
+        {v.more && <a href={v.more.href}>{v.more.label} &rarr;</a>}
+      </p>
+    </section>
+    <div class="card-grid">
+      {posts.map((p) => <PostCard post={p} />)}
+    </div>
+  </div>
+</BaseLayout>
